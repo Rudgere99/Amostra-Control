@@ -34,3 +34,16 @@ export function mapProgramacao(row) {
     createdAt: row.criado_em
   }
 }
+
+
+export function mapUsuario(row) {
+  return {
+    id: row.id,
+    name: row.nome,
+    badge: row.cadastro,
+    profile: row.perfil,
+    active: row.ativo,
+    status: row.ativo ? 'Ativo' : 'Inativo',
+    createdAt: row.criado_em
+  }
+}

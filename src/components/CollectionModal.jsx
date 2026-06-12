@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { nowTime } from '../utils/status.js'
+import { formatClockTime, formatHourRange } from '../utils/time.js'
 
 export default function CollectionModal({ row, onClose, onSave }) {
   const [form, setForm] = useState({
@@ -43,7 +44,7 @@ export default function CollectionModal({ row, onClose, onSave }) {
         <div className="modal-card__header">
           <div>
             <span className="eyebrow">Registro de campo</span>
-            <h3>Registrar coleta das {row.time}</h3>
+            <h3>Registrar coleta das {formatHourRange(row.time)}</h3>
           </div>
           <button className="icon-btn" type="button" onClick={onClose}>×</button>
         </div>
@@ -52,8 +53,8 @@ export default function CollectionModal({ row, onClose, onSave }) {
           <label>Nome do amostrador<input value={form.sampler} onChange={(e) => setField('sampler', e.target.value)} placeholder="Digite o nome" /></label>
           <label>Cadastro<input value={form.badge} onChange={(e) => setField('badge', e.target.value)} placeholder="Ex: 12345" /></label>
           <label>Data<input value={row.date} readOnly /></label>
-          <label>Hora programada<input value={row.time} readOnly /></label>
-          <label>Hora real<input value={form.realTime} readOnly /></label>
+          <label>Hora programada<input value={formatHourRange(row.time)} readOnly /></label>
+          <label>Hora real<input value={formatClockTime(form.realTime)} readOnly /></label>
           <label>Contém fino agregado?<select value={form.fine ? 'sim' : 'nao'} onChange={(e) => setField('fine', e.target.value === 'sim')}><option value="nao">Não</option><option value="sim">Sim</option></select></label>
           <label>SF1 coletada?<select value={form.sf1 ? 'sim' : 'nao'} onChange={(e) => setField('sf1', e.target.value === 'sim')}><option value="sim">Sim</option><option value="nao">Não</option></select></label>
           <label>HTT1 coletada?<select value={form.htt1 ? 'sim' : 'nao'} onChange={(e) => setField('htt1', e.target.value === 'sim')}><option value="sim">Sim</option><option value="nao">Não</option></select></label>

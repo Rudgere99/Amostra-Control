@@ -23,6 +23,10 @@ const navItems = [
   { id: 'settings', label: 'Configurações', icon: Settings }
 ]
 
+function todayDate() {
+  return new Date().toISOString().slice(0, 10)
+}
+
 function normalizeRemoteRows(rows) {
   return rows.map((row) => ({ ...row, remote: true }))
 }
@@ -41,8 +45,8 @@ function App() {
       if (!hasApiConfigured()) return
 
       try {
-        const data = await fetchCollections()
-        if (Array.isArray(data) && data.length > 0) {
+        const data = await fetchCollections(todayDate())
+        if (Array.isArray(data)) {
           setSchedule(normalizeRemoteRows(data))
         }
         setApiStatus('Conectado ao Railway')

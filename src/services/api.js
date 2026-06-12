@@ -28,8 +28,9 @@ async function request(path, options = {}) {
   return data
 }
 
-export async function fetchCollections() {
-  return request('/api/coletas')
+export async function fetchCollections(date) {
+  const query = date ? `?date=${encodeURIComponent(date)}` : ''
+  return request(`/api/coletas${query}`)
 }
 
 export async function createCollection(payload) {
@@ -54,6 +55,24 @@ export async function fetchDashboardSummary(date) {
 export async function generateDaySchedule(payload) {
   return request('/api/programacao/generate-day', {
     method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function fetchUsers() {
+  return request('/api/usuarios')
+}
+
+export async function createUser(payload) {
+  return request('/api/usuarios', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function updateUser(id, payload) {
+  return request(`/api/usuarios/${id}`, {
+    method: 'PUT',
     body: JSON.stringify(payload)
   })
 }

@@ -57,6 +57,8 @@ button { cursor: pointer; }
 .btn { border: 1px solid var(--border); border-radius: 11px; height: 42px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; font-weight: 800; color: var(--text); background: #0b1220; }
 .btn--orange { background: var(--orange); color: #111827; border-color: transparent; }
 .btn--ghost { background: #0b1220; color: var(--text); }
+.btn:disabled { opacity: .62; cursor: not-allowed; }
+.inline-status { color: var(--muted); background: #0b1220; border: 1px solid var(--border); border-radius: 999px; padding: 10px 13px; font-size: 12px; font-weight: 800; }
 
 .alert-banner { display: flex; align-items: center; gap: 14px; background: rgba(249,115,22,.12); border: 1px solid rgba(249,115,22,.55); border-radius: 16px; padding: 15px; box-shadow: var(--shadow); }
 .alert-banner__icon { width: 42px; height: 42px; border-radius: 13px; background: rgba(249,115,22,.18); color: var(--orange); display: grid; place-items: center; }

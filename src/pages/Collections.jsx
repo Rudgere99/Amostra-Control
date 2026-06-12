@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Download, RefreshCcw, Wand2 } from 'lucide-react'
 import PageHeader from '../components/PageHeader.jsx'
 import FiltersBar from '../components/FiltersBar.jsx'
@@ -9,6 +9,16 @@ function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function normalizeDate(value) {
+  if (!value) return ''
+  return String(value).slice(0, 10)
+}
+
+function matchesFilter(value, filterValue, allValue) {
+  if (!filterValue || filterValue === allValue) return true
+  return String(value || '') === String(filterValue)
+}
+
 export default function Collections({ schedule, updateCollection, generateFullDay, reloadCollections, isSaving }) {
   const [form, setForm] = useState({
     date: today(),
@@ -17,8 +27,37 @@ export default function Collections({ schedule, updateCollection, generateFullDa
     letter: 'A'
   })
 
+  const [filters, setFilters] = useState({
+    date: today(),
+    shift: 'Todos',
+    plant: 'Todas',
+    letter: 'Todas',
+    status: 'Todos'
+  })
+
   function setField(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  const filteredSchedule = useMemo(() => {
+    return schedule.filter((item) => {
+      const dateOk = !filters.date || normalizeDate(item.date) === filters.date
+      const shiftOk = matchesFilter(item.shift, filters.shift, 'Todos')
+      const plantOk = matchesFilter(item.plant, filters.plant, 'Todas')
+      const letterOk = matchesFilter(item.letter, filters.letter, 'Todas')
+      const statusOk = matchesFilter(item.status, filters.status, 'Todos')
+
+      return dateOk && shiftOk && plantOk && letterOk && statusOk
+    })
+  }, [schedule, filters])
+
+  function handleReload() {
+    const params = {
+      date: filters.date || form.date,
+      plant: filters.plant !== 'Todas' ? filters.plant : form.plant
+    }
+
+    reloadCollections?.(params)
   }
 
   return (
@@ -29,10 +68,10 @@ export default function Collections({ schedule, updateCollection, generateFullDa
         description="Tabela operacional para registrar as coletas das faixas 00-01 até 23-00, considerando as pilhas SF1, HTT1 e NPO1."
         actions={(
           <>
-            <button className="btn btn--ghost" type="button" onClick={() => reloadCollections?.({ date: form.date, plant: form.plant })} disabled={isSaving}>
+            <button className="btn btn--ghost" type="button" onClick={handleReload} disabled={isSaving}>
               <RefreshCcw size={17} /> Atualizar
             </button>
-            <button className="btn btn--orange" type="button" onClick={() => exportScheduleCsv(schedule)}>
+            <button className="btn btn--orange" type="button" onClick={() => exportScheduleCsv(filteredSchedule)}>
               <Download size={17} /> Exportar CSV
             </button>
           </>
@@ -53,8 +92,13 @@ export default function Collections({ schedule, updateCollection, generateFullDa
         </button>
       </div>
 
-      <FiltersBar />
-      <CollectionTable rows={schedule} onSave={updateCollection} />
+      <FiltersBar filters={filters} onChange={setFilters} />
+
+      <div className="filter-summary">
+        Exibindo <strong>{filteredSchedule.length}</strong> de <strong>{schedule.length}</strong> registros
+      </div>
+
+      <CollectionTable rows={filteredSchedule} onSave={updateCollection} />
     </div>
   )
 }

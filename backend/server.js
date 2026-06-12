@@ -11,9 +11,54 @@ dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 3001
-const allowedOrigin = process.env.FRONTEND_URL || '*'
 
-app.use(cors({ origin: allowedOrigin }))
+function normalizeOrigin(origin) {
+  return origin ? origin.trim().replace(/\/+$/, '') : ''
+}
+
+function getAllowedOrigins() {
+  return [process.env.FRONTEND_URL, process.env.FRONTEND_URLS]
+    .filter(Boolean)
+    .flatMap((value) => value.split(','))
+    .map(normalizeOrigin)
+    .filter(Boolean)
+}
+
+const allowedOrigins = getAllowedOrigins()
+const allowAnyOrigin = allowedOrigins.length === 0 || allowedOrigins.includes('*')
+
+function isAllowedVercelPreview(origin) {
+  if (process.env.ALLOW_VERCEL_PREVIEWS === 'false') return false
+
+  try {
+    const { hostname } = new URL(origin)
+    return hostname === 'vercel.app' || hostname.endsWith('.vercel.app')
+  } catch {
+    return false
+  }
+}
+
+function isAllowedLocalhost(origin) {
+  try {
+    const { hostname } = new URL(origin)
+    return ['localhost', '127.0.0.1'].includes(hostname)
+  } catch {
+    return false
+  }
+}
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) {
+      callback(null, true)
+      return
+    }
+
+    const normalizedOrigin = normalizeOrigin(origin)
+    const allowed = allowAnyOrigin || allowedOrigins.includes(normalizedOrigin) || isAllowedVercelPreview(normalizedOrigin) || isAllowedLocalhost(normalizedOrigin)
+    callback(null, allowed ? normalizedOrigin : false)
+  }
+}))
 app.use(express.json())
 
 app.get('/', (req, res) => {

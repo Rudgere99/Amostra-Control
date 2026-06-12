@@ -22,6 +22,10 @@ const navItems = [
   { id: 'settings', label: 'Configurações', icon: Settings }
 ]
 
+function normalizeRemoteRows(rows) {
+  return rows.map((row) => ({ ...row, remote: true }))
+}
+
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
   const [schedule, setSchedule] = useState(initialSchedule)
@@ -38,7 +42,7 @@ function App() {
       try {
         const data = await fetchCollections()
         if (Array.isArray(data) && data.length > 0) {
-          setSchedule(data)
+          setSchedule(normalizeRemoteRows(data))
         }
         setApiStatus('Conectado ao Railway')
       } catch (error) {
@@ -57,14 +61,13 @@ function App() {
       let savedRow = updatedRow
 
       if (hasApiConfigured()) {
-        const isRemoteId = typeof updatedRow.id === 'number' && updatedRow.id > 1000
-
-        if (isRemoteId) {
+        if (updatedRow.remote) {
           savedRow = await updateCollectionApi(updatedRow.id, updatedRow)
         } else {
           savedRow = await createCollection(updatedRow)
         }
 
+        savedRow = { ...savedRow, remote: true }
         setApiStatus('Registro salvo no Railway')
       }
 

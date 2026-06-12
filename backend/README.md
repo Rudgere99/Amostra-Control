@@ -16,7 +16,9 @@ npm run dev
 
 ```txt
 DATABASE_URL=URL do PostgreSQL do Railway
-FRONTEND_URL=URL do front-end na Vercel
+FRONTEND_URL=URL principal do front-end na Vercel
+FRONTEND_URLS=URLs extras liberadas no CORS, separadas por vírgula
+ALLOW_VERCEL_PREVIEWS=true
 PORT=3001
 NODE_ENV=production
 ```
@@ -37,6 +39,10 @@ backend
 ```txt
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 FRONTEND_URL=https://seu-front-na-vercel.vercel.app
+# opcional: inclua URLs fixas adicionais, separadas por vírgula
+FRONTEND_URLS=https://amostra-control.vercel.app,https://outro-preview.vercel.app
+# por padrão, previews *.vercel.app são liberados; use false para bloquear
+ALLOW_VERCEL_PREVIEWS=true
 NODE_ENV=production
 ```
 
@@ -66,7 +72,7 @@ POST /api/programacao/generate-day
 
 ## Gerar programação do dia
 
-Exemplo de corpo para `POST /api/programacao/generate-day`:
+Exemplo de corpo para `POST /api/programacao/generate-day` (se `startHour`/`endHour` forem omitidos, a API gera de 00:00 até 23:00):
 
 ```json
 {

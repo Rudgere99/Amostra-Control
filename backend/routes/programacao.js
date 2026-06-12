@@ -32,15 +32,22 @@ router.get('/', async (req, res) => {
 
 router.post('/generate-day', async (req, res) => {
   try {
-    const { date, plant = 'Planta 01', shift = '1º Turno', letter = 'A', startHour = 7, endHour = 18 } = req.body
+    const { date, plant = 'Planta 01', shift = '1º Turno', letter = 'A', startHour = 0, endHour = 23 } = req.body
 
     if (!date) {
       return res.status(400).json({ error: 'Informe a data no campo date.' })
     }
 
+    const firstHour = Math.max(0, Number(startHour))
+    const lastHour = Math.min(23, Number(endHour))
+
+    if (!Number.isInteger(firstHour) || !Number.isInteger(lastHour) || firstHour > lastHour) {
+      return res.status(400).json({ error: 'Informe startHour e endHour entre 0 e 23.' })
+    }
+
     const created = []
 
-    for (let hour = Number(startHour); hour <= Number(endHour); hour += 1) {
+    for (let hour = firstHour; hour <= lastHour; hour += 1) {
       const time = `${String(hour).padStart(2, '0')}:00:00`
 
       const prog = await pool.query(`
@@ -54,6 +61,16 @@ router.post('/generate-day', async (req, res) => {
       const programacao = prog.rows[0]
 
       await pool.query(`
+        WITH existing AS (
+          UPDATE coletas_amostras
+          SET
+            programacao_id = $1,
+            turno = $5,
+            letra = $6,
+            atualizado_em = CURRENT_TIMESTAMP
+          WHERE data_coleta = $2 AND hora_programada = $3 AND planta = $4
+          RETURNING id
+        )
         INSERT INTO coletas_amostras (
           programacao_id,
           data_coleta,
@@ -64,10 +81,7 @@ router.post('/generate-day', async (req, res) => {
           status
         )
         SELECT $1, $2, $3, $4, $5, $6, 'pendente'
-        WHERE NOT EXISTS (
-          SELECT 1 FROM coletas_amostras
-          WHERE data_coleta = $2 AND hora_programada = $3 AND planta = $4
-        );
+        WHERE NOT EXISTS (SELECT 1 FROM existing);
       `, [programacao.id, date, time, plant, shift, letter])
 
       created.push(mapProgramacao(programacao))

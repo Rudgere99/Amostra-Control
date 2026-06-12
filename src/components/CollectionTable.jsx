@@ -3,6 +3,7 @@ import { Eye, PencilLine } from 'lucide-react'
 import StatusBadge from './StatusBadge.jsx'
 import SampleBadge from './SampleBadge.jsx'
 import CollectionModal from './CollectionModal.jsx'
+import { formatClockTime, formatHourRange } from '../utils/time.js'
 
 export default function CollectionTable({ rows, onSave }) {
   const [selected, setSelected] = useState(null)
@@ -36,14 +37,14 @@ export default function CollectionTable({ rows, onSave }) {
           <tbody>
             {rows.map((row) => (
               <tr key={row.id}>
-                <td><strong>{row.time}</strong></td>
+                <td><strong>{formatHourRange(row.time)}</strong></td>
                 <td>{row.plant}</td>
                 <td><SampleBadge value={row.sf1} /></td>
                 <td><SampleBadge value={row.htt1} /></td>
                 <td><SampleBadge value={row.npo1} /></td>
                 <td>{row.sampler || '-'}</td>
                 <td>{row.badge || '-'}</td>
-                <td>{row.realTime || '-'}</td>
+                <td>{formatClockTime(row.realTime)}</td>
                 <td>{row.ccco ? 'Sim' : 'Não'}</td>
                 <td><StatusBadge status={row.status} /></td>
                 <td>

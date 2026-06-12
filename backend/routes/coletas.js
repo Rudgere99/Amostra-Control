@@ -4,6 +4,58 @@ import { mapColeta } from '../utils/mapRows.js'
 
 const router = express.Router()
 
+function normalizeTime(time) {
+  if (!time) return null
+
+  const value = String(time).trim()
+  const rangeMatch = value.match(/^(\d{1,2})-(\d{1,2})$/)
+  if (rangeMatch) {
+    return `${String(Number(rangeMatch[1])).padStart(2, '0')}:00:00`
+  }
+
+  const clockMatch = value.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
+  if (clockMatch) {
+    const [, hour, minute, second = '00'] = clockMatch
+    return `${String(Number(hour)).padStart(2, '0')}:${minute}:${second}`
+  }
+
+  return value
+}
+
+function toBoolean(value) {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') return ['true', 'sim', '1', 'yes'].includes(value.toLowerCase())
+  return Boolean(value)
+}
+
+async function ensureProgramacao(client, body) {
+  const programacaoId = body.programacaoId || body.programacao_id || null
+  if (programacaoId) return programacaoId
+
+  const date = body.date || body.data_coleta
+  const time = normalizeTime(body.time || body.hora_programada)
+  const plant = body.plant || body.planta || null
+
+  if (!date || !time || !plant) return null
+
+  const result = await client.query(`
+    INSERT INTO programacao_amostragem (data_programada, hora_programada, planta, turno, letra, status)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT (data_programada, hora_programada, planta)
+    DO UPDATE SET turno = EXCLUDED.turno, letra = EXCLUDED.letra, status = EXCLUDED.status
+    RETURNING id;
+  `, [
+    date,
+    time,
+    plant,
+    body.shift || body.turno || null,
+    body.letter || body.letra || null,
+    body.status || 'pendente'
+  ])
+
+  return result.rows[0].id
+}
+
 router.get('/', async (req, res) => {
   try {
     const { date, status, plant } = req.query
@@ -55,10 +107,17 @@ router.get('/:id', async (req, res) => {
 })
 
 router.post('/', async (req, res) => {
+  const client = await pool.connect()
+
   try {
     const body = req.body
+    const time = normalizeTime(body.time || body.hora_programada)
+    const realTime = normalizeTime(body.realTime || body.hora_real)
 
-    const result = await pool.query(`
+    await client.query('BEGIN')
+    const programacaoId = await ensureProgramacao(client, body)
+
+    const result = await client.query(`
       INSERT INTO coletas_amostras (
         programacao_id,
         data_coleta,
@@ -79,71 +138,107 @@ router.post('/', async (req, res) => {
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
       RETURNING *;
     `, [
-      body.programacaoId || null,
+      programacaoId,
       body.date,
-      body.time,
-      body.realTime || null,
+      time,
+      realTime,
       body.plant || null,
       body.shift || null,
       body.letter || null,
-      Boolean(body.sf1),
-      Boolean(body.htt1),
-      Boolean(body.npo1),
+      toBoolean(body.sf1),
+      toBoolean(body.htt1),
+      toBoolean(body.npo1),
       body.sampler || null,
       body.badge || null,
-      Boolean(body.fine),
-      Boolean(body.ccco),
+      toBoolean(body.fine),
+      toBoolean(body.ccco),
       body.status || 'pendente',
       body.notes || null
     ])
 
+    if (programacaoId) {
+      await client.query('UPDATE programacao_amostragem SET status = $1 WHERE id = $2', [body.status || 'pendente', programacaoId])
+    }
+
+    await client.query('COMMIT')
     res.status(201).json(mapColeta(result.rows[0]))
   } catch (error) {
+    await client.query('ROLLBACK')
     res.status(500).json({ error: 'Erro ao criar coleta.', details: error.message })
+  } finally {
+    client.release()
   }
 })
 
 router.put('/:id', async (req, res) => {
+  const client = await pool.connect()
+
   try {
     const body = req.body
+    const time = normalizeTime(body.time || body.hora_programada)
+    const realTime = normalizeTime(body.realTime || body.hora_real)
 
-    const result = await pool.query(`
+    await client.query('BEGIN')
+    const programacaoId = await ensureProgramacao(client, body)
+
+    const result = await client.query(`
       UPDATE coletas_amostras
       SET
-        hora_real = $1,
-        pilha_sf1 = $2,
-        pilha_htt1 = $3,
-        pilha_npo1 = $4,
-        amostrador_nome = $5,
-        cadastro = $6,
-        contem_fino_agregado = $7,
-        informado_ccco = $8,
-        status = $9,
-        observacoes = $10,
+        programacao_id = COALESCE($1, programacao_id),
+        data_coleta = COALESCE($2, data_coleta),
+        hora_programada = COALESCE($3, hora_programada),
+        planta = COALESCE($4, planta),
+        turno = COALESCE($5, turno),
+        letra = COALESCE($6, letra),
+        hora_real = $7,
+        pilha_sf1 = $8,
+        pilha_htt1 = $9,
+        pilha_npo1 = $10,
+        amostrador_nome = $11,
+        cadastro = $12,
+        contem_fino_agregado = $13,
+        informado_ccco = $14,
+        status = $15,
+        observacoes = $16,
         atualizado_em = CURRENT_TIMESTAMP
-      WHERE id = $11
+      WHERE id = $17
       RETURNING *;
     `, [
-      body.realTime || null,
-      Boolean(body.sf1),
-      Boolean(body.htt1),
-      Boolean(body.npo1),
+      programacaoId,
+      body.date || null,
+      time,
+      body.plant || null,
+      body.shift || null,
+      body.letter || null,
+      realTime,
+      toBoolean(body.sf1),
+      toBoolean(body.htt1),
+      toBoolean(body.npo1),
       body.sampler || null,
       body.badge || null,
-      Boolean(body.fine),
-      Boolean(body.ccco),
+      toBoolean(body.fine),
+      toBoolean(body.ccco),
       body.status || 'pendente',
       body.notes || null,
       req.params.id
     ])
 
     if (!result.rowCount) {
+      await client.query('ROLLBACK')
       return res.status(404).json({ error: 'Coleta não encontrada.' })
     }
 
+    if (result.rows[0].programacao_id) {
+      await client.query('UPDATE programacao_amostragem SET status = $1 WHERE id = $2', [result.rows[0].status, result.rows[0].programacao_id])
+    }
+
+    await client.query('COMMIT')
     res.json(mapColeta(result.rows[0]))
   } catch (error) {
+    await client.query('ROLLBACK')
     res.status(500).json({ error: 'Erro ao atualizar coleta.', details: error.message })
+  } finally {
+    client.release()
   }
 })
 

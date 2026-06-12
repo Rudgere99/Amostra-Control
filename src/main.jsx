@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { CalendarClock, ClipboardCheck, FileText, Home, Settings, Users } from 'lucide-react'
 import AppLayout from './layouts/AppLayout.jsx'
@@ -10,6 +10,7 @@ import UsersPage from './pages/UsersPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import { initialSchedule } from './data/sampleSchedule.js'
 import { buildStats } from './utils/status.js'
+import { createCollection, fetchCollections, hasApiConfigured, updateCollectionApi } from './services/api.js'
 import './styles.css'
 
 const navItems = [
@@ -25,15 +26,65 @@ function App() {
   const [activePage, setActivePage] = useState('dashboard')
   const [schedule, setSchedule] = useState(initialSchedule)
   const [alertVisible, setAlertVisible] = useState(true)
+  const [apiStatus, setApiStatus] = useState(hasApiConfigured() ? 'Conectando ao Railway...' : 'API não configurada. Usando dados locais.')
+  const [isSaving, setIsSaving] = useState(false)
 
   const stats = useMemo(() => buildStats(schedule), [schedule])
 
-  function updateCollection(updatedRow) {
-    setSchedule((current) => current.map((row) => row.id === updatedRow.id ? updatedRow : row))
-    setAlertVisible(false)
+  useEffect(() => {
+    async function loadCollections() {
+      if (!hasApiConfigured()) return
+
+      try {
+        const data = await fetchCollections()
+        if (Array.isArray(data) && data.length > 0) {
+          setSchedule(data)
+        }
+        setApiStatus('Conectado ao Railway')
+      } catch (error) {
+        console.error(error)
+        setApiStatus(`Falha ao conectar no Railway: ${error.message}`)
+      }
+    }
+
+    loadCollections()
+  }, [])
+
+  async function updateCollection(updatedRow) {
+    setIsSaving(true)
+
+    try {
+      let savedRow = updatedRow
+
+      if (hasApiConfigured()) {
+        const isRemoteId = typeof updatedRow.id === 'number' && updatedRow.id > 1000
+
+        if (isRemoteId) {
+          savedRow = await updateCollectionApi(updatedRow.id, updatedRow)
+        } else {
+          savedRow = await createCollection(updatedRow)
+        }
+
+        setApiStatus('Registro salvo no Railway')
+      }
+
+      setSchedule((current) => {
+        const exists = current.some((row) => row.id === updatedRow.id)
+        if (!exists) return [savedRow, ...current]
+        return current.map((row) => row.id === updatedRow.id ? savedRow : row)
+      })
+
+      setAlertVisible(false)
+    } catch (error) {
+      console.error(error)
+      alert(`Não foi possível salvar no banco: ${error.message}`)
+      setApiStatus(`Erro ao salvar: ${error.message}`)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const commonProps = { schedule, stats, updateCollection, alertVisible, setAlertVisible }
+  const commonProps = { schedule, stats, updateCollection, alertVisible, setAlertVisible, apiStatus, isSaving }
 
   const page = {
     dashboard: <Dashboard {...commonProps} onOpenCollections={() => setActivePage('collections')} />,
@@ -46,6 +97,10 @@ function App() {
 
   return (
     <AppLayout navItems={navItems} activePage={activePage} onChangePage={setActivePage}>
+      <div className="api-status-bar">
+        <span className={apiStatus.includes('Conectado') || apiStatus.includes('salvo') ? 'api-dot api-dot--ok' : 'api-dot'}></span>
+        {apiStatus}{isSaving ? ' | Salvando...' : ''}
+      </div>
       {page}
     </AppLayout>
   )

@@ -10,7 +10,7 @@ import UsersPage from './pages/UsersPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import { initialSchedule } from './data/sampleSchedule.js'
 import { buildStats } from './utils/status.js'
-import { createCollection, fetchCollections, hasApiConfigured, updateCollectionApi } from './services/api.js'
+import { createCollection, fetchCollections, generateDaySchedule, hasApiConfigured, updateCollectionApi } from './services/api.js'
 import './styles.css'
 import './api-status.css'
 
@@ -36,22 +36,22 @@ function App() {
 
   const stats = useMemo(() => buildStats(schedule), [schedule])
 
-  useEffect(() => {
-    async function loadCollections() {
-      if (!hasApiConfigured()) return
+  async function loadCollections(filters = {}) {
+    if (!hasApiConfigured()) return
 
-      try {
-        const data = await fetchCollections()
-        if (Array.isArray(data) && data.length > 0) {
-          setSchedule(normalizeRemoteRows(data))
-        }
-        setApiStatus('Conectado ao Railway')
-      } catch (error) {
-        console.error(error)
-        setApiStatus(`Falha ao conectar no Railway: ${error.message}`)
+    try {
+      const data = await fetchCollections(filters)
+      if (Array.isArray(data)) {
+        setSchedule(data.length > 0 ? normalizeRemoteRows(data) : initialSchedule)
       }
+      setApiStatus('Conectado ao Railway')
+    } catch (error) {
+      console.error(error)
+      setApiStatus(`Falha ao conectar no Railway: ${error.message}`)
     }
+  }
 
+  useEffect(() => {
     loadCollections()
   }, [])
 
@@ -88,7 +88,23 @@ function App() {
     }
   }
 
-  const commonProps = { schedule, stats, updateCollection, alertVisible, setAlertVisible, apiStatus, isSaving }
+  async function generateFullDay(payload) {
+    setIsSaving(true)
+    try {
+      await generateDaySchedule(payload)
+      await loadCollections({ date: payload.date, plant: payload.plant })
+      setApiStatus('Programação 00-01 até 23-00 gerada no Railway')
+      setActivePage('collections')
+    } catch (error) {
+      console.error(error)
+      alert(`Não foi possível gerar a programação: ${error.message}`)
+      setApiStatus(`Erro ao gerar programação: ${error.message}`)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const commonProps = { schedule, stats, updateCollection, alertVisible, setAlertVisible, apiStatus, isSaving, generateFullDay, reloadCollections: loadCollections }
 
   const page = {
     dashboard: <Dashboard {...commonProps} onOpenCollections={() => setActivePage('collections')} />,
@@ -102,7 +118,7 @@ function App() {
   return (
     <AppLayout navItems={navItems} activePage={activePage} onChangePage={setActivePage}>
       <div className="api-status-bar">
-        <span className={apiStatus.includes('Conectado') || apiStatus.includes('salvo') ? 'api-dot api-dot--ok' : 'api-dot'}></span>
+        <span className={apiStatus.includes('Conectado') || apiStatus.includes('salvo') || apiStatus.includes('gerada') ? 'api-dot api-dot--ok' : 'api-dot'}></span>
         {apiStatus}{isSaving ? ' | Salvando...' : ''}
       </div>
       {page}

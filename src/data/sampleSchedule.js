@@ -1,26 +1,28 @@
-export const initialSchedule = [
-  { id: 1, time: '00:00', date: '2026-06-11', shift: '1º Turno', letter: 'A', plant: 'Planta 01', sf1: true, htt1: true, npo1: true, sampler: 'Carlos', badge: '1023', realTime: '00:08', fine: false, ccco: true, status: 'coletado', notes: 'Coleta dentro da tolerância.' },
-  { id: 2, time: '01:00', date: '2026-06-11', shift: '1º Turno', letter: 'A', plant: 'Planta 02', sf1: true, htt1: true, npo1: true, sampler: 'João', badge: '1150', realTime: '01:11', fine: false, ccco: true, status: 'coletado', notes: 'Coleta dentro da tolerância.' },
-  { id: 3, time: '02:00', date: '2026-06-11', shift: '1º Turno', letter: 'A', plant: 'Planta 01', sf1: true, htt1: false, npo1: true, sampler: 'Marcos', badge: '1310', realTime: '02:22', fine: false, ccco: true, status: 'parcial', notes: 'HTT1 sem material disponível.' },
-  { id: 4, time: '03:00', date: '2026-06-11', shift: '1º Turno', letter: 'A', plant: 'Planta 02', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'atrasado', notes: '' },
-  { id: 5, time: '04:00', date: '2026-06-11', shift: '1º Turno', letter: 'A', plant: 'Planta 01', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 6, time: '05:00', date: '2026-06-11', shift: '1º Turno', letter: 'A', plant: 'Planta 02', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 7, time: '06:00', date: '2026-06-11', shift: '1º Turno', letter: 'A', plant: 'Planta 01', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 8, time: '07:00', date: '2026-06-11', shift: '1º Turno', letter: 'A', plant: 'Planta 02', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 9, time: '08:00', date: '2026-06-11', shift: '2º Turno', letter: 'A', plant: 'Planta 01', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 10, time: '09:00', date: '2026-06-11', shift: '2º Turno', letter: 'A', plant: 'Planta 02', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 11, time: '10:00', date: '2026-06-11', shift: '2º Turno', letter: 'A', plant: 'Planta 01', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 12, time: '11:00', date: '2026-06-11', shift: '2º Turno', letter: 'A', plant: 'Planta 02', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 13, time: '12:00', date: '2026-06-11', shift: '2º Turno', letter: 'A', plant: 'Planta 01', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 14, time: '13:00', date: '2026-06-11', shift: '2º Turno', letter: 'A', plant: 'Planta 02', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 15, time: '14:00', date: '2026-06-11', shift: '2º Turno', letter: 'A', plant: 'Planta 01', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 16, time: '15:00', date: '2026-06-11', shift: '2º Turno', letter: 'A', plant: 'Planta 02', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 17, time: '16:00', date: '2026-06-11', shift: '3º Turno', letter: 'A', plant: 'Planta 01', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 18, time: '17:00', date: '2026-06-11', shift: '3º Turno', letter: 'A', plant: 'Planta 02', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 19, time: '18:00', date: '2026-06-11', shift: '3º Turno', letter: 'A', plant: 'Planta 01', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 20, time: '19:00', date: '2026-06-11', shift: '3º Turno', letter: 'A', plant: 'Planta 02', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 21, time: '20:00', date: '2026-06-11', shift: '3º Turno', letter: 'A', plant: 'Planta 01', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 22, time: '21:00', date: '2026-06-11', shift: '3º Turno', letter: 'A', plant: 'Planta 02', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 23, time: '22:00', date: '2026-06-11', shift: '3º Turno', letter: 'A', plant: 'Planta 01', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' },
-  { id: 24, time: '23:00', date: '2026-06-11', shift: '3º Turno', letter: 'A', plant: 'Planta 02', sf1: false, htt1: false, npo1: false, sampler: '', badge: '', realTime: '', fine: false, ccco: false, status: 'pendente', notes: '' }
-]
+function today() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function shiftByHour(hour) {
+  if (hour >= 0 && hour <= 7) return '1º Turno'
+  if (hour >= 8 && hour <= 15) return '2º Turno'
+  return '3º Turno'
+}
+
+export const initialSchedule = Array.from({ length: 24 }, (_, index) => ({
+  id: index + 1,
+  time: `${String(index).padStart(2, '0')}:00`,
+  date: today(),
+  shift: shiftByHour(index),
+  letter: 'A',
+  plant: 'Planta 01',
+  sf1: false,
+  htt1: false,
+  npo1: false,
+  sampler: '',
+  badge: '',
+  realTime: '',
+  fine: false,
+  ccco: false,
+  status: 'pendente',
+  notes: ''
+}))

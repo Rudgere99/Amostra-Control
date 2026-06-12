@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Eye, PencilLine } from 'lucide-react'
+import { PencilLine } from 'lucide-react'
 import StatusBadge from './StatusBadge.jsx'
 import SampleBadge from './SampleBadge.jsx'
 import CollectionModal from './CollectionModal.jsx'
@@ -48,9 +48,7 @@ export default function CollectionTable({ rows, onSave }) {
                 <td>{row.ccco ? 'Sim' : 'Não'}</td>
                 <td><StatusBadge status={row.status} /></td>
                 <td>
-                  {row.status === 'coletado'
-                    ? <button className="table-action" type="button"><Eye size={15} /> Visualizar</button>
-                    : <button className="table-action table-action--primary" type="button" onClick={() => setSelected(row)}><PencilLine size={15} /> Registrar</button>}
+                  <button className={`table-action ${row.status === 'coletado' ? '' : 'table-action--primary'}`} type="button" onClick={() => setSelected(row)}><PencilLine size={15} /> {row.status === 'coletado' ? 'Editar' : 'Registrar'}</button>
                 </td>
               </tr>
             ))}

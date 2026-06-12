@@ -28,8 +28,13 @@ async function request(path, options = {}) {
   return data
 }
 
-export async function fetchCollections() {
-  return request('/api/coletas')
+export async function fetchCollections(filters = {}) {
+  const params = new URLSearchParams()
+  if (filters.date) params.set('date', filters.date)
+  if (filters.status) params.set('status', filters.status)
+  if (filters.plant) params.set('plant', filters.plant)
+  const query = params.toString() ? `?${params.toString()}` : ''
+  return request(`/api/coletas${query}`)
 }
 
 export async function createCollection(payload) {
@@ -54,7 +59,25 @@ export async function fetchDashboardSummary(date) {
 export async function generateDaySchedule(payload) {
   return request('/api/programacao/generate-day', {
     method: 'POST',
+    body: JSON.stringify({ startHour: 0, endHour: 23, ...payload })
+  })
+}
+
+export async function fetchUsers() {
+  return request('/api/usuarios')
+}
+
+export async function createUser(payload) {
+  return request('/api/usuarios', {
+    method: 'POST',
     body: JSON.stringify(payload)
+  })
+}
+
+export async function updateUserStatus(id, active) {
+  return request(`/api/usuarios/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ active })
   })
 }
 

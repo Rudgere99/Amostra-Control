@@ -12,6 +12,7 @@ import { initialSchedule } from './data/sampleSchedule.js'
 import { buildStats } from './utils/status.js'
 import { createCollection, fetchCollections, hasApiConfigured, updateCollectionApi } from './services/api.js'
 import './styles.css'
+import './api-status.css'
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: Home },

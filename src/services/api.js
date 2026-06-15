@@ -56,6 +56,28 @@ async function getUserRoutePaths() {
   }
 }
 
+
+function usersFromCollections(collections) {
+  const usersByBadge = new Map()
+
+  collections.forEach((row) => {
+    if (!row.badge && !row.sampler) return
+
+    const badge = row.badge || `sem-cadastro-${usersByBadge.size + 1}`
+    if (usersByBadge.has(badge)) return
+
+    usersByBadge.set(badge, {
+      id: `coleta-${badge}`,
+      name: row.sampler || 'Amostrador sem nome',
+      badge,
+      profile: 'amostrador',
+      active: true
+    })
+  })
+
+  return Array.from(usersByBadge.values())
+}
+
 async function requestWithRouteFallback(paths, options = {}) {
   if (!paths.length) throw routeUnavailableError()
 
@@ -109,11 +131,21 @@ export async function generateDaySchedule(payload) {
 }
 
 export async function fetchUsers() {
-  return requestWithRouteFallback(await getUserRoutePaths())
+  const paths = await getUserRoutePaths()
+
+  if (!paths.length) {
+    const collections = await fetchCollections()
+    return usersFromCollections(Array.isArray(collections) ? collections : [])
+  }
+
+  return requestWithRouteFallback(paths)
 }
 
 export async function createUser(payload) {
-  return requestWithRouteFallback(await getUserRoutePaths(), {
+  const paths = await getUserRoutePaths()
+  if (!paths.length) throw routeUnavailableError()
+
+  return requestWithRouteFallback(paths, {
     method: 'POST',
     body: JSON.stringify(payload)
   })

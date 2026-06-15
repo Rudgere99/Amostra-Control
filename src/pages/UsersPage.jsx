@@ -23,11 +23,15 @@ export default function UsersPage() {
 
     try {
       const data = await fetchUsers()
-      setUsers(Array.isArray(data) ? data : [])
-      setStatus('Usuários carregados do Railway')
+      if (Array.isArray(data) && data.length > 0) {
+        setUsers(data)
+        setStatus('Cadastros carregados do Railway')
+      } else {
+        setStatus('Nenhum cadastro remoto encontrado. Exibindo modelo local.')
+      }
     } catch (error) {
       if (isRouteUnavailable(error)) {
-        setStatus('API de cadastros indisponível neste backend. Exibindo modelo local.')
+        setStatus('Nenhum cadastro remoto encontrado. Exibindo modelo local.')
         return
       }
 
@@ -70,7 +74,7 @@ export default function UsersPage() {
       if (isRouteUnavailable(error)) {
         setUsers((current) => [{ id: Date.now(), ...form, active: true }, ...current])
         setForm({ name: '', badge: '', profile: 'amostrador' })
-        setStatus('API de cadastros indisponível neste backend. Cadastro mantido apenas localmente.')
+        setStatus('Cadastro salvo localmente até o backend publicar a rota de cadastros.')
         return
       }
 

@@ -149,3 +149,12 @@ tr:hover td { background: rgba(37,99,235,.04); }
   .alert-banner__actions { margin-left: 0; }
   .clock-card { min-width: 110px; }
 }
+
+.login-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at top right, rgba(249,115,22,.16), transparent 34%), var(--bg); }
+.login-card { width: min(440px, 100%); display: grid; gap: 18px; background: var(--card); border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow); padding: 24px; }
+.login-card__brand { border-bottom: 0; padding: 0; }
+.login-card h2 { margin: 6px 0; font-size: 30px; }
+.login-card p, .login-card small { margin: 0; color: var(--muted); line-height: 1.6; }
+.user-pill { min-width: 170px; padding: 7px 12px; background: #080d16; border: 1px solid var(--border); border-radius: 14px; display: flex; flex-direction: column; align-items: flex-end; }
+.user-pill strong { font-size: 13px; }
+.user-pill span { color: var(--muted); font-size: 11px; }

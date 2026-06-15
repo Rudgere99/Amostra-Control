@@ -26,11 +26,11 @@ router.post('/init-db', async (req, res) => {
     await pool.query(schema)
 
     await pool.query(`
-      INSERT INTO usuarios (nome, cadastro, perfil)
+      INSERT INTO usuarios (nome, cadastro, matricula, perfil, letra)
       VALUES
-        ('Amostrador Campo', '1023', 'amostrador'),
-        ('Controlador CCO', '2001', 'cco'),
-        ('Administrador', '0001', 'admin')
+        ('Amostrador Campo', '1023', '1023', 'Amostrador', 'A'),
+        ('Controlador CCO', '2001', '2001', 'Controle', 'C'),
+        ('Administrador', '0001', '0001', 'Controle', 'D')
       ON CONFLICT (cadastro) DO NOTHING;
     `)
 

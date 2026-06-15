@@ -8,6 +8,7 @@ import History from './pages/History.jsx'
 import Reports from './pages/Reports.jsx'
 import UsersPage from './pages/UsersPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
+import LoginPage from './pages/LoginPage.jsx'
 import { initialSchedule } from './data/sampleSchedule.js'
 import { buildStats } from './utils/status.js'
 import { createCollection, fetchCollections, generateDaySchedule, hasApiConfigured, updateCollectionApi } from './services/api.js'
@@ -27,7 +28,17 @@ function normalizeRemoteRows(rows) {
   return rows.map((row) => ({ ...row, remote: true }))
 }
 
+function getStoredUser() {
+  try {
+    const stored = localStorage.getItem('amostra-control-user')
+    return stored ? JSON.parse(stored) : null
+  } catch {
+    return null
+  }
+}
+
 function App() {
+  const [loggedUser, setLoggedUser] = useState(getStoredUser)
   const [activePage, setActivePage] = useState('dashboard')
   const [schedule, setSchedule] = useState(initialSchedule)
   const [alertVisible, setAlertVisible] = useState(true)
@@ -52,20 +63,26 @@ function App() {
   }
 
   useEffect(() => {
-    loadCollections()
-  }, [])
+    if (loggedUser) {
+      loadCollections()
+    }
+  }, [loggedUser])
 
   async function updateCollection(updatedRow) {
     setIsSaving(true)
 
     try {
-      let savedRow = updatedRow
+      let savedRow = {
+        ...updatedRow,
+        sampler: updatedRow.sampler || loggedUser?.name || '',
+        badge: updatedRow.badge || loggedUser?.badge || ''
+      }
 
       if (hasApiConfigured()) {
         if (updatedRow.remote) {
-          savedRow = await updateCollectionApi(updatedRow.id, updatedRow)
+          savedRow = await updateCollectionApi(updatedRow.id, savedRow)
         } else {
-          savedRow = await createCollection(updatedRow)
+          savedRow = await createCollection(savedRow)
         }
 
         savedRow = { ...savedRow, remote: true }
@@ -104,7 +121,17 @@ function App() {
     }
   }
 
-  const commonProps = { schedule, stats, updateCollection, alertVisible, setAlertVisible, apiStatus, isSaving, generateFullDay, reloadCollections: loadCollections }
+  function handleLogout() {
+    localStorage.removeItem('amostra-control-user')
+    setLoggedUser(null)
+    setActivePage('dashboard')
+  }
+
+  if (!loggedUser) {
+    return <LoginPage onLogin={setLoggedUser} />
+  }
+
+  const commonProps = { schedule, stats, updateCollection, alertVisible, setAlertVisible, apiStatus, isSaving, generateFullDay, reloadCollections: loadCollections, loggedUser }
 
   const page = {
     dashboard: <Dashboard {...commonProps} onOpenCollections={() => setActivePage('collections')} />,
@@ -117,9 +144,11 @@ function App() {
 
   return (
     <AppLayout navItems={navItems} activePage={activePage} onChangePage={setActivePage}>
-      <div className="api-status-bar">
+      <div className="api-status-bar api-status-bar--with-user">
         <span className={apiStatus.includes('Conectado') || apiStatus.includes('salvo') || apiStatus.includes('gerada') ? 'api-dot api-dot--ok' : 'api-dot'}></span>
-        {apiStatus}{isSaving ? ' | Salvando...' : ''}
+        <span>{apiStatus}{isSaving ? ' | Salvando...' : ''}</span>
+        <strong>{loggedUser.name} | {loggedUser.badge}</strong>
+        <button className="mini-link" type="button" onClick={handleLogout}>Sair</button>
       </div>
       {page}
     </AppLayout>

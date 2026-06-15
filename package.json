@@ -1,37 +1,19 @@
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import dotenv from 'dotenv'
-import { pool } from './pool.js'
-
-dotenv.config()
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-async function initDatabase() {
-  const schemaPath = path.join(__dirname, 'schema.sql')
-  const schema = fs.readFileSync(schemaPath, 'utf8')
-
-  await pool.query(schema)
-
-  await pool.query(`
-    INSERT INTO usuarios (nome, cadastro, perfil)
-    VALUES
-      ('Amostrador Campo', '1023', 'amostrador'),
-      ('Controlador CCO', '2001', 'cco'),
-      ('Administrador', '0001', 'admin')
-    ON CONFLICT (cadastro) DO NOTHING;
-  `)
-
-  console.log('[AmostraControl API] Tabelas verificadas/criadas com sucesso.')
+{
+  "name": "amostra-control",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest"
+  },
+  "devDependencies": {}
 }
-
-initDatabase()
-  .catch((error) => {
-    console.error('[AmostraControl API] Erro ao inicializar banco:', error)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await pool.end()
-  })

@@ -6,6 +6,7 @@ import dashboardRoutes from './routes/dashboard.js'
 import coletasRoutes from './routes/coletas.js'
 import programacaoRoutes from './routes/programacao.js'
 import setupRoutes from './routes/setup.js'
+import usuariosRoutes from './routes/usuarios.js'
 
 dotenv.config()
 
@@ -65,7 +66,16 @@ app.get('/', (req, res) => {
   res.json({
     name: 'AmostraControl API',
     status: 'online',
-    routes: ['/health', '/api/setup/tables', '/api/setup/init-db', '/api/dashboard/summary', '/api/coletas', '/api/programacao']
+    routes: [
+      '/health',
+      '/api/setup/tables',
+      '/api/setup/init-db',
+      '/api/dashboard/summary',
+      '/api/coletas',
+      '/api/programacao',
+      '/api/usuarios',
+      '/api/usuarios/login'
+    ]
   })
 })
 
@@ -82,6 +92,7 @@ app.use('/api/setup', setupRoutes)
 app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/coletas', coletasRoutes)
 app.use('/api/programacao', programacaoRoutes)
+app.use('/api/usuarios', usuariosRoutes)
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Rota não encontrada.' })

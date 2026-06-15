@@ -22,10 +22,77 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     const message = typeof data === 'string' ? data : data.error || 'Erro na comunicação com a API.'
-    throw new Error(message)
+    const error = new Error(message)
+    error.status = response.status
+    throw error
   }
 
   return data
+}
+
+
+
+let cachedUserRoutePaths = null
+
+function routeUnavailableError() {
+  const error = new Error('API de cadastros não disponível neste backend.')
+  error.status = 404
+  return error
+}
+
+async function getUserRoutePaths() {
+  if (cachedUserRoutePaths) return cachedUserRoutePaths
+
+  const fallbackPaths = ['/api/cadastros', '/api/cadastro', '/api/usuarios']
+
+  try {
+    const metadata = await request('/')
+    const routes = Array.isArray(metadata?.routes) ? metadata.routes : []
+    cachedUserRoutePaths = fallbackPaths.filter((path) => routes.includes(path))
+    return cachedUserRoutePaths
+  } catch (error) {
+    cachedUserRoutePaths = fallbackPaths
+    return cachedUserRoutePaths
+  }
+}
+
+
+function usersFromCollections(collections) {
+  const usersByBadge = new Map()
+
+  collections.forEach((row) => {
+    if (!row.badge && !row.sampler) return
+
+    const badge = row.badge || `sem-cadastro-${usersByBadge.size + 1}`
+    if (usersByBadge.has(badge)) return
+
+    usersByBadge.set(badge, {
+      id: `coleta-${badge}`,
+      name: row.sampler || 'Amostrador sem nome',
+      badge,
+      profile: 'amostrador',
+      active: true
+    })
+  })
+
+  return Array.from(usersByBadge.values())
+}
+
+async function requestWithRouteFallback(paths, options = {}) {
+  if (!paths.length) throw routeUnavailableError()
+
+  let lastError
+
+  for (const path of paths) {
+    try {
+      return await request(path, options)
+    } catch (error) {
+      lastError = error
+      if (error.status !== 404) throw error
+    }
+  }
+
+  throw lastError
 }
 
 export async function fetchCollections(filters = {}) {
@@ -64,18 +131,29 @@ export async function generateDaySchedule(payload) {
 }
 
 export async function fetchUsers() {
-  return request('/api/usuarios')
+  const paths = await getUserRoutePaths()
+
+  if (!paths.length) {
+    const collections = await fetchCollections()
+    return usersFromCollections(Array.isArray(collections) ? collections : [])
+  }
+
+  return requestWithRouteFallback(paths)
 }
 
 export async function createUser(payload) {
-  return request('/api/usuarios', {
+  const paths = await getUserRoutePaths()
+  if (!paths.length) throw routeUnavailableError()
+
+  return requestWithRouteFallback(paths, {
     method: 'POST',
     body: JSON.stringify(payload)
   })
 }
 
 export async function updateUserStatus(id, active) {
-  return request(`/api/usuarios/${id}/status`, {
+  const paths = (await getUserRoutePaths()).map((path) => `${path}/${id}/status`)
+  return requestWithRouteFallback(paths, {
     method: 'PATCH',
     body: JSON.stringify({ active })
   })

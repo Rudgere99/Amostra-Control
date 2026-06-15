@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react'
-import { Download, RefreshCcw, Wand2 } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Download, RefreshCcw } from 'lucide-react'
 import PageHeader from '../components/PageHeader.jsx'
-import FiltersBar from '../components/FiltersBar.jsx'
 import CollectionTable from '../components/CollectionTable.jsx'
 import { exportScheduleCsv } from '../utils/exportCsv.js'
+import { hasApiConfigured } from '../services/api.js'
 
 function today() {
   return new Date().toISOString().slice(0, 10)
@@ -14,91 +14,112 @@ function normalizeDate(value) {
   return String(value).slice(0, 10)
 }
 
-function matchesFilter(value, filterValue, allValue) {
-  if (!filterValue || filterValue === allValue) return true
-  return String(value || '') === String(filterValue)
+function shiftByHour(hour) {
+  if (hour >= 0 && hour <= 7) return '1º Turno'
+  if (hour >= 8 && hour <= 15) return '2º Turno'
+  return '3º Turno'
+}
+
+function emptyCollectionSlot(date, plant, hour) {
+  const time = `${String(hour).padStart(2, '0')}:00`
+
+  return {
+    id: `${date}-${plant}-${time}`,
+    time,
+    date,
+    shift: shiftByHour(hour),
+    letter: 'A',
+    plant,
+    sf1: false,
+    htt1: false,
+    npo1: false,
+    sampler: '',
+    badge: '',
+    realTime: '',
+    fineNpo: false,
+  fineHtt: false,
+    ccco: false,
+    status: 'pendente',
+    notes: ''
+  }
+}
+
+function buildFixedDayRows(schedule, date, plant) {
+  const rowsByHour = new Map()
+
+  schedule.forEach((item) => {
+    if (normalizeDate(item.date) !== date || item.plant !== plant) return
+
+    const hour = Number.parseInt(String(item.time || '').slice(0, 2), 10)
+    if (Number.isInteger(hour)) rowsByHour.set(hour, item)
+  })
+
+  return Array.from({ length: 24 }, (_, hour) => rowsByHour.get(hour) || emptyCollectionSlot(date, plant, hour))
 }
 
 export default function Collections({ schedule, updateCollection, generateFullDay, reloadCollections, isSaving }) {
-  const [form, setForm] = useState({
-    date: today(),
-    plant: 'Planta 01',
-    shift: '1º Turno',
-    letter: 'A'
-  })
+  const [selectedDate, setSelectedDate] = useState(today())
+  const [selectedPlant, setSelectedPlant] = useState('Planta 01')
 
-  const [filters, setFilters] = useState({
-    date: today(),
-    shift: 'Todos',
-    plant: 'Todas',
-    letter: 'Todas',
-    status: 'Todos'
-  })
-
-  function setField(field, value) {
-    setForm((current) => ({ ...current, [field]: value }))
-  }
-
-  const filteredSchedule = useMemo(() => {
-    return schedule.filter((item) => {
-      const dateOk = !filters.date || normalizeDate(item.date) === filters.date
-      const shiftOk = matchesFilter(item.shift, filters.shift, 'Todos')
-      const plantOk = matchesFilter(item.plant, filters.plant, 'Todas')
-      const letterOk = matchesFilter(item.letter, filters.letter, 'Todas')
-      const statusOk = matchesFilter(item.status, filters.status, 'Todos')
-
-      return dateOk && shiftOk && plantOk && letterOk && statusOk
-    })
-  }, [schedule, filters])
+  const fixedSchedule = useMemo(() => {
+    return buildFixedDayRows(schedule, selectedDate, selectedPlant)
+  }, [schedule, selectedDate, selectedPlant])
 
   function handleReload() {
-    const params = {
-      date: filters.date || form.date,
-      plant: filters.plant !== 'Todas' ? filters.plant : form.plant
-    }
-
-    reloadCollections?.(params)
+    reloadCollections?.({ date: selectedDate, plant: selectedPlant })
   }
+
+  useEffect(() => {
+    if (hasApiConfigured()) {
+      if (generateFullDay) {
+        generateFullDay({ date: selectedDate, plant: selectedPlant, shift: '1º Turno', letter: 'A' })
+        return
+      }
+
+      handleReload()
+    }
+  }, [selectedDate, selectedPlant])
 
   return (
     <div className="page-stack">
       <PageHeader
         eyebrow="Rotina de campo"
         title="Coletas programadas"
-        description="Tabela operacional para registrar as coletas das faixas 00-01 até 23-00, considerando as pilhas SF1, HTT1 e NPO1."
+        description="Tabela fixa de 24 horas para lançamento das coletas. Altere apenas a data ou a planta para carregar a programação correspondente."
         actions={(
           <>
             <button className="btn btn--ghost" type="button" onClick={handleReload} disabled={isSaving}>
               <RefreshCcw size={17} /> Atualizar
             </button>
-            <button className="btn btn--orange" type="button" onClick={() => exportScheduleCsv(filteredSchedule)}>
+            <button className="btn btn--orange" type="button" onClick={() => exportScheduleCsv(fixedSchedule)}>
               <Download size={17} /> Exportar CSV
             </button>
           </>
         )}
       />
 
-      <div className="generation-card">
-        <div>
-          <h3>Gerar programação diária</h3>
-          <p>Cria/verifica automaticamente as 24 faixas horárias: 00-01, 01-02, ... 23-00.</p>
+      <div className="collections-toolbar">
+        <label>
+          Data da coleta
+          <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
+        </label>
+        <label>
+          Planta
+          <select value={selectedPlant} onChange={(event) => setSelectedPlant(event.target.value)}>
+            <option>Planta 01</option>
+            <option>Planta 02</option>
+          </select>
+        </label>
+        <div className="collections-toolbar__hint">
+          A grade permanece fixa de 00-01 até 23-00; os lançamentos mudam conforme a data e a planta selecionadas.
         </div>
-        <label>Data<input type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} /></label>
-        <label>Planta<select value={form.plant} onChange={(e) => setField('plant', e.target.value)}><option>Planta 01</option><option>Planta 02</option></select></label>
-        <label>Turno<select value={form.shift} onChange={(e) => setField('shift', e.target.value)}><option>1º Turno</option><option>2º Turno</option><option>3º Turno</option></select></label>
-        <label>Letra<select value={form.letter} onChange={(e) => setField('letter', e.target.value)}><option>A</option><option>B</option><option>C</option><option>D</option></select></label>
-        <button className="btn btn--orange" type="button" onClick={() => generateFullDay?.(form)} disabled={isSaving}>
-          <Wand2 size={17} /> Gerar 24h
-        </button>
       </div>
-
-      <FiltersBar filters={filters} onChange={setFilters} />
 
       <div className="filter-summary">
-        Exibindo <strong>{filteredSchedule.length}</strong> de <strong>{schedule.length}</strong> registros
+        Exibindo <strong>{fixedSchedule.length}</strong> horários de <strong>{selectedPlant}</strong> em <strong>{selectedDate}</strong>
       </div>
 
-      <CollectionTable rows={filteredSchedule} onSave={updateCollection} />
+      <CollectionTable rows={fixedSchedule} onSave={updateCollection} />
     </div>
   )
 }

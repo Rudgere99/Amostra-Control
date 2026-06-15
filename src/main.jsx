@@ -109,7 +109,7 @@ function App() {
   const page = {
     dashboard: <Dashboard {...commonProps} onOpenCollections={() => setActivePage('collections')} />,
     collections: <Collections {...commonProps} />,
-    history: <History />,
+    history: <History schedule={schedule} />,
     reports: <Reports schedule={schedule} stats={stats} />,
     users: <UsersPage />,
     settings: <SettingsPage />

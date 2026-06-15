@@ -34,12 +34,18 @@ CREATE TABLE IF NOT EXISTS coletas_amostras (
   amostrador_nome VARCHAR(150),
   cadastro VARCHAR(50),
   contem_fino_agregado BOOLEAN DEFAULT FALSE,
+  fino_agregado_npo BOOLEAN DEFAULT FALSE,
+  fino_agregado_htt BOOLEAN DEFAULT FALSE,
   informado_ccco BOOLEAN DEFAULT FALSE,
   status VARCHAR(50) DEFAULT 'pendente',
   observacoes TEXT,
   criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+ALTER TABLE coletas_amostras ADD COLUMN IF NOT EXISTS fino_agregado_npo BOOLEAN DEFAULT FALSE;
+ALTER TABLE coletas_amostras ADD COLUMN IF NOT EXISTS fino_agregado_htt BOOLEAN DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_programacao_data ON programacao_amostragem(data_programada);
 CREATE INDEX IF NOT EXISTS idx_coletas_data ON coletas_amostras(data_coleta);

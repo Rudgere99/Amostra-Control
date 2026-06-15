@@ -14,14 +14,27 @@ export default function UsersPage() {
   const [status, setStatus] = useState(hasApiConfigured() ? 'Conectando ao Railway...' : 'API não configurada. Exibindo modelo local.')
   const [saving, setSaving] = useState(false)
 
+  function isRouteUnavailable(error) {
+    return error?.status === 404
+  }
+
   async function loadUsers() {
     if (!hasApiConfigured()) return
 
     try {
       const data = await fetchUsers()
-      setUsers(Array.isArray(data) ? data : [])
-      setStatus('Usuários carregados do Railway')
+      if (Array.isArray(data) && data.length > 0) {
+        setUsers(data)
+        setStatus('Cadastros carregados do Railway')
+      } else {
+        setStatus('Nenhum cadastro remoto encontrado. Exibindo modelo local.')
+      }
     } catch (error) {
+      if (isRouteUnavailable(error)) {
+        setStatus('Nenhum cadastro remoto encontrado. Exibindo modelo local.')
+        return
+      }
+
       console.error(error)
       setStatus(`Erro ao carregar usuários: ${error.message}`)
     }
@@ -58,6 +71,13 @@ export default function UsersPage() {
 
       setForm({ name: '', badge: '', profile: 'amostrador' })
     } catch (error) {
+      if (isRouteUnavailable(error)) {
+        setUsers((current) => [{ id: Date.now(), ...form, active: true }, ...current])
+        setForm({ name: '', badge: '', profile: 'amostrador' })
+        setStatus('Cadastro salvo localmente até o backend publicar a rota de cadastros.')
+        return
+      }
+
       console.error(error)
       alert(`Não foi possível salvar o usuário: ${error.message}`)
       setStatus(`Erro ao salvar usuário: ${error.message}`)
@@ -84,7 +104,7 @@ export default function UsersPage() {
       </form>
 
       <div className="table-card">
-        <div className="table-card__header"><div><h3>Usuários cadastrados</h3><span>Lista integrada com a API /api/usuarios</span></div></div>
+        <div className="table-card__header"><div><h3>Cadastros</h3><span>Lista integrada com a API /api/cadastros, com compatibilidade para /api/cadastro e /api/usuarios</span></div></div>
         <div className="table-wrapper">
           <table>
             <thead><tr><th>Nome</th><th>Cadastro</th><th>Perfil</th><th>Status</th></tr></thead>

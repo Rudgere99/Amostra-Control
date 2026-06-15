@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Download, RefreshCcw, Save } from '../components/LocalIcons.jsx'
+import { Download, RefreshCcw } from '../components/LocalIcons.jsx'
 import PageHeader from '../components/PageHeader.jsx'
+import CollectionModal from '../components/CollectionModal.jsx'
+import StatusBadge from '../components/StatusBadge.jsx'
+import SampleBadge from '../components/SampleBadge.jsx'
 import { exportScheduleCsv } from '../utils/exportCsv.js'
 import { formatClockTime, formatHourRange, toHourNumber } from '../utils/time.js'
-import { nowTime } from '../utils/status.js'
 
 function today() {
   return new Date().toISOString().slice(0, 10)
@@ -30,14 +32,14 @@ function rowKey(date, plant, time) {
   return `${date}|${plant}|${normalizeHour(time)}`
 }
 
-function fixedDayRows(date, plant) {
+function fixedDayRows(date, plant, loggedUser) {
   return Array.from({ length: 24 }, (_, hour) => ({
     id: `novo-${date}-${plant}-${hour}`,
     date,
     plant,
     time: `${String(hour).padStart(2, '0')}:00`,
     shift: shiftByHour(hour),
-    letter: '',
+    letter: loggedUser?.letter || '',
     status: 'pendente',
     sf1: false,
     htt1: false,
@@ -45,31 +47,19 @@ function fixedDayRows(date, plant) {
     fineNpo: false,
     fineHtt: false,
     ccco: false,
-    sampler: '',
-    badge: '',
+    sampler: loggedUser?.name || '',
+    badge: loggedUser?.badge || '',
     realTime: '',
     notes: '',
     remote: false
   }))
 }
 
-function mergeFixedRows(baseRows, scheduleRows, drafts) {
+function mergeFixedRows(baseRows, scheduleRows) {
   return baseRows.map((base) => {
     const saved = scheduleRows.find((item) => normalizeHour(item.time) === normalizeHour(base.time))
-    const merged = saved ? { ...base, ...saved, remote: true } : base
-    return { ...merged, ...(drafts[rowKey(base.date, base.plant, base.time)] || {}) }
+    return saved ? { ...base, ...saved, remote: true } : base
   })
-}
-
-function statusLabel(status) {
-  const labels = {
-    pendente: 'Pendente',
-    coletado: 'Realizada',
-    nao_realizado: 'Não realizada',
-    parcial: 'Parcial',
-    atrasado: 'Atrasado'
-  }
-  return labels[status] || status || 'Pendente'
 }
 
 export default function Collections({ schedule = [], updateCollection, reloadCollections, isSaving, loggedUser }) {
@@ -77,11 +67,11 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
     date: today(),
     plant: 'Planta 01'
   })
-  const [drafts, setDrafts] = useState({})
+  const [selected, setSelected] = useState(null)
 
   function setBaseField(field, value) {
     setTableBase((current) => ({ ...current, [field]: value }))
-    setDrafts({})
+    setSelected(null)
   }
 
   function handleReload() {
@@ -99,8 +89,8 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
   }, [schedule, tableBase])
 
   const rows = useMemo(() => {
-    return mergeFixedRows(fixedDayRows(tableBase.date, tableBase.plant), scheduleForBase, drafts)
-  }, [tableBase.date, tableBase.plant, scheduleForBase, drafts])
+    return mergeFixedRows(fixedDayRows(tableBase.date, tableBase.plant, loggedUser), scheduleForBase)
+  }, [tableBase.date, tableBase.plant, scheduleForBase, loggedUser])
 
   const summary = useMemo(() => {
     return {
@@ -111,33 +101,32 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
     }
   }, [rows])
 
-  function updateDraft(row, field, value) {
-    const key = rowKey(row.date, row.plant, row.time)
-    setDrafts((current) => ({
-      ...current,
-      [key]: {
-        ...(current[key] || {}),
-        [field]: value
-      }
-    }))
-  }
-
-  function saveRow(row) {
-    const hour = toHourNumber(row.time) ?? 0
-    const status = row.status || 'pendente'
-    const shouldSetRealTime = status === 'coletado' && !row.realTime
-
-    updateCollection?.({
+  function openRegister(row) {
+    setSelected({
       ...row,
       date: tableBase.date,
       plant: tableBase.plant,
-      time: `${String(hour).padStart(2, '0')}:00`,
-      shift: row.shift || shiftByHour(hour),
       sampler: row.sampler || loggedUser?.name || '',
       badge: row.badge || loggedUser?.badge || '',
-      realTime: shouldSetRealTime ? nowTime() : row.realTime,
-      fine: Boolean(row.fineNpo || row.fineHtt)
+      letter: row.letter || loggedUser?.letter || ''
     })
+  }
+
+  function saveFromModal(updatedRow) {
+    const hour = toHourNumber(updatedRow.time) ?? 0
+
+    updateCollection?.({
+      ...updatedRow,
+      date: tableBase.date,
+      plant: tableBase.plant,
+      time: `${String(hour).padStart(2, '0')}:00`,
+      shift: updatedRow.shift || shiftByHour(hour),
+      sampler: loggedUser?.name || updatedRow.sampler || '',
+      badge: loggedUser?.badge || updatedRow.badge || '',
+      letter: loggedUser?.letter || updatedRow.letter || '',
+      fine: Boolean(updatedRow.fineNpo || updatedRow.fineHtt)
+    })
+    setSelected(null)
   }
 
   return (
@@ -145,7 +134,7 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
       <PageHeader
         eyebrow="Rotina de campo"
         title="Coletas programadas"
-        description="Modelo fixo no padrão MonPlant: a tabela mantém as 24 faixas horárias e muda somente conforme a data e a planta selecionadas."
+        description="Tabela fixa no padrão MonPlant: altere somente a data e a planta. Para lançar, clique em Registrar na faixa horária desejada."
         actions={(
           <>
             <button className="btn btn--ghost" type="button" onClick={handleReload} disabled={isSaving}>
@@ -161,7 +150,7 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
       <div className="generation-card generation-card--fixed collections-filter">
         <div>
           <h3>Base de lançamento</h3>
-          <p>Selecione a data e a planta. As linhas permanecem fixas para lançamento direto, sem gerar uma nova tabela manualmente.</p>
+          <p>Selecione a data e a planta. A grade permanece fixa com as 24 faixas horárias.</p>
         </div>
 
         <label>
@@ -194,14 +183,15 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
         </div>
 
         <div className="table-wrapper table-wrapper--fixed">
-          <table className="collections-table">
+          <table className="collections-table collections-table--register">
             <thead>
               <tr>
                 <th>Faixa</th>
                 <th>Turno</th>
+                <th>Letra</th>
                 <th>Status</th>
                 <th>Amostrador</th>
-                <th>Cadastro</th>
+                <th>Matrícula</th>
                 <th>SF1</th>
                 <th>HTT1</th>
                 <th>NPO1</th>
@@ -218,29 +208,22 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
                 <tr key={rowKey(row.date, row.plant, row.time)}>
                   <td className="sticky-cell"><strong>{formatHourRange(row.time)}</strong></td>
                   <td>{row.shift || '-'}</td>
-                  <td>
-                    <select value={row.status || 'pendente'} onChange={(e) => updateDraft(row, 'status', e.target.value)} disabled={isSaving}>
-                      <option value="pendente">Pendente</option>
-                      <option value="coletado">Realizada</option>
-                      <option value="nao_realizado">Não realizada</option>
-                      <option value="parcial">Parcial</option>
-                    </select>
-                  </td>
-                  <td><input value={row.sampler || ''} onChange={(e) => updateDraft(row, 'sampler', e.target.value)} placeholder="Nome" disabled={isSaving} /></td>
-                  <td><input value={row.badge || ''} onChange={(e) => updateDraft(row, 'badge', e.target.value)} placeholder="Credencial" disabled={isSaving} /></td>
-                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.sf1)} onChange={(e) => updateDraft(row, 'sf1', e.target.checked)} disabled={isSaving} /></td>
-                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.htt1)} onChange={(e) => updateDraft(row, 'htt1', e.target.checked)} disabled={isSaving} /></td>
-                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.npo1)} onChange={(e) => updateDraft(row, 'npo1', e.target.checked)} disabled={isSaving} /></td>
-                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.fineNpo)} onChange={(e) => updateDraft(row, 'fineNpo', e.target.checked)} disabled={isSaving} /></td>
-                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.fineHtt)} onChange={(e) => updateDraft(row, 'fineHtt', e.target.checked)} disabled={isSaving} /></td>
-                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.ccco)} onChange={(e) => updateDraft(row, 'ccco', e.target.checked)} disabled={isSaving} /></td>
+                  <td>{row.letter || loggedUser?.letter || '-'}</td>
+                  <td><StatusBadge status={row.status || 'pendente'} /></td>
+                  <td>{row.sampler || loggedUser?.name || '-'}</td>
+                  <td>{row.badge || loggedUser?.badge || '-'}</td>
+                  <td><SampleBadge ok={row.sf1} /></td>
+                  <td><SampleBadge ok={row.htt1} /></td>
+                  <td><SampleBadge ok={row.npo1} /></td>
+                  <td>{row.fineNpo ? 'Sim' : 'Não'}</td>
+                  <td>{row.fineHtt ? 'Sim' : 'Não'}</td>
+                  <td>{row.ccco ? 'Sim' : 'Não'}</td>
                   <td>{formatClockTime(row.realTime)}</td>
-                  <td><input className="notes-input" value={row.notes || ''} onChange={(e) => updateDraft(row, 'notes', e.target.value)} placeholder="Observações" disabled={isSaving} /></td>
+                  <td className="notes-preview">{row.notes || '-'}</td>
                   <td>
-                    <button className="table-action table-action--primary" type="button" onClick={() => saveRow(row)} disabled={isSaving}>
-                      <Save size={15} /> Salvar
+                    <button className="table-action table-action--primary" type="button" onClick={() => openRegister(row)} disabled={isSaving}>
+                      {row.status === 'coletado' || row.status === 'parcial' || row.status === 'nao_realizado' ? 'Editar' : 'Registrar'}
                     </button>
-                    <small className="status-hint">{statusLabel(row.status)}</small>
                   </td>
                 </tr>
               ))}
@@ -248,6 +231,15 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
           </table>
         </div>
       </div>
+
+      {selected && (
+        <CollectionModal
+          row={selected}
+          loggedUser={loggedUser}
+          onClose={() => setSelected(null)}
+          onSave={saveFromModal}
+        />
+      )}
     </div>
   )
 }

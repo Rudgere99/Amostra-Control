@@ -9,6 +9,7 @@ function mapUser(row) {
     name: row.nome,
     badge: row.cadastro,
     profile: row.perfil,
+    letter: row.letra,
     active: row.ativo,
     createdAt: row.criado_em
   }
@@ -17,7 +18,7 @@ function mapUser(row) {
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, nome, cadastro, perfil, ativo, criado_em
+      SELECT id, nome, cadastro, perfil, letra, ativo, criado_em
       FROM usuarios
       ORDER BY nome ASC;
     `)
@@ -30,26 +31,32 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { name, nome, badge, cadastro, profile, perfil } = req.body
+    const { name, nome, badge, cadastro, profile, perfil, letter, letra } = req.body
 
     const finalName = String(name || nome || '').trim()
     const finalBadge = String(badge || cadastro || '').trim()
     const finalProfile = String(profile || perfil || 'amostrador').trim()
+    const finalLetter = String(letter || letra || '').trim().toUpperCase()
 
     if (!finalName || !finalBadge) {
       return res.status(400).json({ error: 'Nome e cadastro são obrigatórios.' })
     }
 
+    if (finalLetter && !['A', 'B', 'C', 'D'].includes(finalLetter)) {
+      return res.status(400).json({ error: 'Letra do turno deve ser A, B, C ou D.' })
+    }
+
     const result = await pool.query(`
-      INSERT INTO usuarios (nome, cadastro, perfil, ativo)
-      VALUES ($1, $2, $3, TRUE)
+      INSERT INTO usuarios (nome, cadastro, perfil, letra, ativo)
+      VALUES ($1, $2, $3, $4, TRUE)
       ON CONFLICT (cadastro)
       DO UPDATE SET
         nome = EXCLUDED.nome,
         perfil = EXCLUDED.perfil,
+        letra = EXCLUDED.letra,
         ativo = TRUE
-      RETURNING id, nome, cadastro, perfil, ativo, criado_em;
-    `, [finalName, finalBadge, finalProfile])
+      RETURNING id, nome, cadastro, perfil, letra, ativo, criado_em;
+    `, [finalName, finalBadge, finalProfile, finalLetter || null])
 
     res.status(201).json(mapUser(result.rows[0]))
   } catch (error) {
@@ -81,7 +88,7 @@ router.post('/login', async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT id, nome, cadastro, perfil, ativo, criado_em
+      SELECT id, nome, cadastro, perfil, letra, ativo, criado_em
       FROM usuarios
       WHERE ${where.join(' OR ')}
       LIMIT 1;
@@ -115,7 +122,7 @@ router.patch('/:id/status', async (req, res) => {
       UPDATE usuarios
       SET ativo = $1
       WHERE id = $2
-      RETURNING id, nome, cadastro, perfil, ativo, criado_em;
+      RETURNING id, nome, cadastro, perfil, letra, ativo, criado_em;
     `, [active, req.params.id])
 
     if (!result.rowCount) {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
+import { RefreshCcw, UserPlus } from 'lucide-react'
 import PageHeader from '../components/PageHeader.jsx'
-import { createUser, fetchUsers, hasApiConfigured } from '../services/api.js'
+import { createUser, fetchUsers, hasApiConfigured, updateUserStatus } from '../services/api.js'
 
 const fallbackUsers = [
   { id: 1, name: 'Amostrador Campo', badge: '1023', profile: 'amostrador', active: true },
@@ -17,6 +18,7 @@ export default function UsersPage() {
   async function loadUsers() {
     if (!hasApiConfigured()) return
 
+    setSaving(true)
     try {
       const data = await fetchUsers()
       setUsers(Array.isArray(data) ? data : [])
@@ -24,6 +26,8 @@ export default function UsersPage() {
     } catch (error) {
       console.error(error)
       setStatus(`Erro ao carregar usuários: ${error.message}`)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -66,37 +70,71 @@ export default function UsersPage() {
     }
   }
 
+  async function toggleStatus(user) {
+    if (!hasApiConfigured()) {
+      setUsers((current) => current.map((item) => item.id === user.id ? { ...item, active: !item.active } : item))
+      return
+    }
+
+    setSaving(true)
+    try {
+      const updated = await updateUserStatus(user.id, !user.active)
+      setUsers((current) => current.map((item) => item.id === user.id ? updated : item))
+      setStatus(updated.active ? 'Usuário ativado no Railway' : 'Usuário inativado no Railway')
+    } catch (error) {
+      console.error(error)
+      alert(`Não foi possível alterar o status: ${error.message}`)
+      setStatus(`Erro ao alterar status: ${error.message}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Cadastros" title="Usuários" description="Cadastro real de amostradores, CCO e administradores para os lançamentos de coleta." />
+      <PageHeader
+        eyebrow="Cadastros"
+        title="Usuários"
+        description="Cadastro real de amostradores, CCO e administradores para login e lançamentos de coleta."
+        actions={(
+          <button className="btn btn--ghost" type="button" onClick={loadUsers} disabled={saving}>
+            <RefreshCcw size={17} /> Atualizar usuários
+          </button>
+        )}
+      />
 
       <div className="api-status-bar"><span className={status.includes('Railway') ? 'api-dot api-dot--ok' : 'api-dot'}></span>{status}</div>
 
-      <form className="generation-card" onSubmit={submit}>
+      <form className="generation-card users-form" onSubmit={submit}>
         <div>
           <h3>Novo usuário</h3>
-          <p>O cadastro será usado nos lançamentos de coleta.</p>
+          <p>O cadastro será usado para entrar no sistema e vincular os lançamentos de coleta.</p>
         </div>
         <label>Nome<input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Nome do usuário" /></label>
         <label>Cadastro<input value={form.badge} onChange={(e) => setField('badge', e.target.value)} placeholder="Matrícula/cadastro" /></label>
         <label>Perfil<select value={form.profile} onChange={(e) => setField('profile', e.target.value)}><option value="amostrador">Amostrador</option><option value="cco">CCO</option><option value="admin">Admin</option></select></label>
-        <button className="btn btn--orange" type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar usuário'}</button>
+        <button className="btn btn--orange" type="submit" disabled={saving}><UserPlus size={17} /> {saving ? 'Salvando...' : 'Salvar usuário'}</button>
       </form>
 
       <div className="table-card">
         <div className="table-card__header"><div><h3>Usuários cadastrados</h3><span>Lista integrada com a API /api/usuarios</span></div></div>
         <div className="table-wrapper">
           <table>
-            <thead><tr><th>Nome</th><th>Cadastro</th><th>Perfil</th><th>Status</th></tr></thead>
+            <thead><tr><th>Nome</th><th>Cadastro</th><th>Perfil</th><th>Status</th><th>Ação</th></tr></thead>
             <tbody>
               {users.map((user) => (
                 <tr key={user.id || user.badge}>
                   <td>{user.name}</td>
                   <td>{user.badge}</td>
                   <td>{user.profile}</td>
-                  <td>{user.active ? 'Ativo' : 'Inativo'}</td>
+                  <td><span className={user.active ? 'status status--coletado' : 'status status--nao_realizado'}>{user.active ? 'Ativo' : 'Inativo'}</span></td>
+                  <td><button className="table-action" type="button" onClick={() => toggleStatus(user)} disabled={saving}>{user.active ? 'Inativar' : 'Ativar'}</button></td>
                 </tr>
               ))}
+
+              {users.length === 0 && (
+                <tr><td colSpan="5">Nenhum usuário cadastrado.</td></tr>
+              )}
             </tbody>
           </table>
         </div>

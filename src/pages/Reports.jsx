@@ -1,37 +1,95 @@
-import React from 'react'
+import React, { useMemo, useState } from 'react'
 import { Download } from 'lucide-react'
 import PageHeader from '../components/PageHeader.jsx'
 import StatCard from '../components/StatCard.jsx'
 import { exportScheduleCsv } from '../utils/exportCsv.js'
 import { formatHourRange } from '../utils/time.js'
 
+function today() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function normalizeDate(value) {
+  if (!value) return ''
+  return String(value).slice(0, 10)
+}
+
+function matchesFilter(value, filterValue, allValue) {
+  if (!filterValue || filterValue === allValue) return true
+  return String(value || '') === String(filterValue)
+}
+
 function yesNo(value) {
   return value ? 'Sim' : 'Não'
 }
 
-export default function Reports({ schedule, stats }) {
-  const fineNpoRows = schedule.filter((item) => item.fineNpo)
-  const fineHttRows = schedule.filter((item) => item.fineHtt)
-  const contaminatedRows = schedule.filter((item) => item.fineNpo || item.fineHtt)
+function contaminationType(item) {
+  if (item.fineNpo && item.fineHtt) return 'NPO e HTT'
+  if (item.fineNpo) return 'NPO'
+  if (item.fineHtt) return 'HTT'
+  return '-'
+}
+
+export default function Reports({ schedule = [], stats = {} }) {
+  const [filters, setFilters] = useState({
+    date: '',
+    plant: 'Todas'
+  })
+
+  const filteredSchedule = useMemo(() => {
+    return schedule.filter((item) => {
+      const dateOk = !filters.date || normalizeDate(item.date) === filters.date
+      const plantOk = matchesFilter(item.plant, filters.plant, 'Todas')
+      return dateOk && plantOk
+    })
+  }, [schedule, filters])
+
+  const fineNpoRows = filteredSchedule.filter((item) => item.fineNpo)
+  const fineHttRows = filteredSchedule.filter((item) => item.fineHtt)
+  const contaminatedRows = filteredSchedule.filter((item) => item.fineNpo || item.fineHtt)
+  const total = stats.total ?? filteredSchedule.length
+  const done = stats.done ?? filteredSchedule.filter((item) => item.status === 'Realizada').length
+  const adherence = stats.adherence ?? (total > 0 ? Math.round((done / total) * 100) : 0)
 
   return (
     <div className="page-stack">
       <PageHeader
         eyebrow="Relatórios"
         title="Resumo executivo das amostragens"
-        description="Indicadores consolidados para acompanhamento do CCO, rastreabilidade dos lançamentos e controle de fino agregado."
+        description="Indicadores consolidados para acompanhamento do CCO, rastreabilidade dos lançamentos e controle de contaminação por fino agregado."
         actions={(
-          <button className="btn btn--orange" type="button" onClick={() => exportScheduleCsv(schedule)}>
+          <button className="btn btn--orange" type="button" onClick={() => exportScheduleCsv(filteredSchedule)}>
             <Download size={17} /> Exportar CSV
           </button>
         )}
       />
 
+      <div className="generation-card generation-card--fixed">
+        <div>
+          <h3>Filtros do relatório</h3>
+          <p>Filtre por data e planta para identificar quando houve contaminação por fino agregado.</p>
+        </div>
+
+        <label>
+          Data
+          <input type="date" value={filters.date} max={today()} onChange={(e) => setFilters((current) => ({ ...current, date: e.target.value }))} />
+        </label>
+
+        <label>
+          Planta
+          <select value={filters.plant} onChange={(e) => setFilters((current) => ({ ...current, plant: e.target.value }))}>
+            <option>Todas</option>
+            <option>Planta 01</option>
+            <option>Planta 02</option>
+          </select>
+        </label>
+      </div>
+
       <section className="stats-grid stats-grid--four">
-        <StatCard label="Total" value={stats.total} detail="programadas" tone="blue" />
-        <StatCard label="Realizadas" value={stats.done} detail="concluídas" tone="green" />
-        <StatCard label="Fino NPO" value={fineNpoRows.length} detail="lançamentos" tone="yellow" />
-        <StatCard label="Fino HTT" value={fineHttRows.length} detail="lançamentos" tone="orange" />
+        <StatCard label="Total" value={total} detail="programadas" tone="blue" />
+        <StatCard label="Realizadas" value={done} detail="concluídas" tone="green" />
+        <StatCard label="Fino agregado NPO" value={fineNpoRows.length} detail="contaminações" tone="yellow" />
+        <StatCard label="Fino agregado HTT" value={fineHttRows.length} detail="contaminações" tone="orange" />
       </section>
 
       <div className="panel">
@@ -42,15 +100,15 @@ export default function Reports({ schedule, stats }) {
           </div>
         </div>
         <p className="report-text">
-          No período avaliado, foram programadas {stats.total} coletas, com {stats.done} registros concluídos e aderência atual de {stats.adherence}%. Foram identificados {contaminatedRows.length} lançamentos com presença de fino agregado, sendo {fineNpoRows.length} em NPO e {fineHttRows.length} em HTT.
+          No período avaliado, foram programadas {total} coletas, com {done} registros concluídos e aderência atual de {adherence}%. Foram identificados {contaminatedRows.length} lançamentos contaminados com fino agregado, sendo {fineNpoRows.length} em NPO e {fineHttRows.length} em HTT.
         </p>
       </div>
 
       <div className="table-card">
         <div className="table-card__header">
           <div>
-            <h3>Lançamentos com fino agregado</h3>
-            <span>Detalhamento de contaminação por NPO e HTT</span>
+            <h3>Lançamentos contaminados com fino agregado</h3>
+            <span>Mostra exatamente quando ocorreu fino agregado em NPO e/ou HTT.</span>
           </div>
         </div>
 
@@ -63,28 +121,32 @@ export default function Reports({ schedule, stats }) {
                 <th>Planta</th>
                 <th>Amostrador</th>
                 <th>Cadastro</th>
-                <th>Fino NPO</th>
-                <th>Fino HTT</th>
+                <th>Contaminação</th>
+                <th>Fino agregado NPO</th>
+                <th>Fino agregado HTT</th>
+                <th>Status</th>
                 <th>Observações</th>
               </tr>
             </thead>
             <tbody>
               {contaminatedRows.map((item) => (
                 <tr key={item.id}>
-                  <td>{String(item.date || '').slice(0, 10)}</td>
+                  <td>{normalizeDate(item.date) || '-'}</td>
                   <td>{formatHourRange(item.time)}</td>
                   <td>{item.plant || '-'}</td>
                   <td>{item.sampler || '-'}</td>
                   <td>{item.badge || '-'}</td>
+                  <td>{contaminationType(item)}</td>
                   <td>{yesNo(item.fineNpo)}</td>
                   <td>{yesNo(item.fineHtt)}</td>
+                  <td>{item.status || '-'}</td>
                   <td>{item.notes || '-'}</td>
                 </tr>
               ))}
 
               {contaminatedRows.length === 0 && (
                 <tr>
-                  <td colSpan="8">Nenhum lançamento com fino agregado encontrado.</td>
+                  <td colSpan="10">Nenhum lançamento contaminado com fino agregado encontrado.</td>
                 </tr>
               )}
             </tbody>

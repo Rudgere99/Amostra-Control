@@ -66,7 +66,7 @@ app.get('/', (req, res) => {
   res.json({
     name: 'AmostraControl API',
     status: 'online',
-    routes: ['/health', '/api/setup/tables', '/api/setup/init-db', '/api/dashboard/summary', '/api/coletas', '/api/programacao', '/api/cadastros']
+    routes: ['/health', '/api/setup/tables', '/api/setup/init-db', '/api/dashboard/summary', '/api/coletas', '/api/programacao', '/api/cadastros', '/api/cadastro', '/api/usuarios']
   })
 })
 
@@ -84,6 +84,8 @@ app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/coletas', coletasRoutes)
 app.use('/api/programacao', programacaoRoutes)
 app.use('/api/cadastros', cadastrosRoutes)
+app.use('/api/cadastro', cadastrosRoutes)
+app.use('/api/usuarios', cadastrosRoutes)
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Rota não encontrada.' })

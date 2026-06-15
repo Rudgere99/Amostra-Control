@@ -22,10 +22,28 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     const message = typeof data === 'string' ? data : data.error || 'Erro na comunicação com a API.'
-    throw new Error(message)
+    const error = new Error(message)
+    error.status = response.status
+    throw error
   }
 
   return data
+}
+
+
+async function requestWithRouteFallback(paths, options = {}) {
+  let lastError
+
+  for (const path of paths) {
+    try {
+      return await request(path, options)
+    } catch (error) {
+      lastError = error
+      if (error.status !== 404) throw error
+    }
+  }
+
+  throw lastError
 }
 
 export async function fetchCollections(filters = {}) {
@@ -64,18 +82,18 @@ export async function generateDaySchedule(payload) {
 }
 
 export async function fetchUsers() {
-  return request('/api/cadastros')
+  return requestWithRouteFallback(['/api/cadastros', '/api/cadastro', '/api/usuarios'])
 }
 
 export async function createUser(payload) {
-  return request('/api/cadastros', {
+  return requestWithRouteFallback(['/api/cadastros', '/api/cadastro', '/api/usuarios'], {
     method: 'POST',
     body: JSON.stringify(payload)
   })
 }
 
 export async function updateUserStatus(id, active) {
-  return request(`/api/cadastros/${id}/status`, {
+  return requestWithRouteFallback([`/api/cadastros/${id}/status`, `/api/cadastro/${id}/status`, `/api/usuarios/${id}/status`], {
     method: 'PATCH',
     body: JSON.stringify({ active })
   })

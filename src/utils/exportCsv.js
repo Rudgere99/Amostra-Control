@@ -1,7 +1,7 @@
 import { formatClockTime, formatHourRange } from './time.js'
 
 export function exportScheduleCsv(schedule) {
-  const headers = ['Data', 'Hora programada', 'Planta', 'Turno', 'Letra', 'SF1', 'HTT1', 'NPO1', 'Amostrador', 'Cadastro', 'Hora real', 'Fino agregado', 'CCCO informado', 'Status', 'Observações']
+  const headers = ['Data', 'Hora programada', 'Planta', 'Turno', 'Letra', 'SF1', 'HTT1', 'NPO1', 'Amostrador', 'Cadastro', 'Hora real', 'Fino agregado NPO', 'Fino agregado HTT', 'CCCO informado', 'Status', 'Observações']
   const rows = schedule.map((item) => [
     item.date,
     formatHourRange(item.time),
@@ -14,7 +14,8 @@ export function exportScheduleCsv(schedule) {
     item.sampler || '-',
     item.badge || '-',
     formatClockTime(item.realTime),
-    item.fine ? 'Sim' : 'Não',
+    item.fineNpo ? 'Sim' : 'Não',
+    item.fineHtt ? 'Sim' : 'Não',
     item.ccco ? 'Sim' : 'Não',
     item.status,
     item.notes || ''

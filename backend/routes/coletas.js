@@ -132,10 +132,12 @@ router.post('/', async (req, res) => {
         amostrador_nome,
         cadastro,
         contem_fino_agregado,
+        fino_agregado_npo,
+        fino_agregado_htt,
         informado_ccco,
         status,
         observacoes
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
       RETURNING *;
     `, [
       programacaoId,
@@ -150,7 +152,9 @@ router.post('/', async (req, res) => {
       toBoolean(body.npo1),
       body.sampler || null,
       body.badge || null,
-      toBoolean(body.fine),
+      toBoolean(body.fine || body.fineNpo || body.fineHtt),
+      toBoolean(body.fineNpo),
+      toBoolean(body.fineHtt),
       toBoolean(body.ccco),
       body.status || 'pendente',
       body.notes || null
@@ -197,11 +201,13 @@ router.put('/:id', async (req, res) => {
         amostrador_nome = $11,
         cadastro = $12,
         contem_fino_agregado = $13,
-        informado_ccco = $14,
-        status = $15,
-        observacoes = $16,
+        fino_agregado_npo = $14,
+        fino_agregado_htt = $15,
+        informado_ccco = $16,
+        status = $17,
+        observacoes = $18,
         atualizado_em = CURRENT_TIMESTAMP
-      WHERE id = $17
+      WHERE id = $19
       RETURNING *;
     `, [
       programacaoId,
@@ -216,7 +222,9 @@ router.put('/:id', async (req, res) => {
       toBoolean(body.npo1),
       body.sampler || null,
       body.badge || null,
-      toBoolean(body.fine),
+      toBoolean(body.fine || body.fineNpo || body.fineHtt),
+      toBoolean(body.fineNpo),
+      toBoolean(body.fineHtt),
       toBoolean(body.ccco),
       body.status || 'pendente',
       body.notes || null,

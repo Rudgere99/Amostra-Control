@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Download, RefreshCcw, Save } from 'lucide-react'
 import PageHeader from '../components/PageHeader.jsx'
 import { exportScheduleCsv } from '../utils/exportCsv.js'
-import { formatHourRange } from '../utils/time.js'
+import { formatClockTime, formatHourRange, toHourNumber } from '../utils/time.js'
+import { nowTime } from '../utils/status.js'
 
 function today() {
   return new Date().toISOString().slice(0, 10)
@@ -13,94 +14,129 @@ function normalizeDate(value) {
   return String(value).slice(0, 10)
 }
 
-function matchesFilter(value, filterValue, allValue) {
-  if (!filterValue || filterValue === allValue) return true
-  return String(value || '') === String(filterValue)
+function normalizeHour(time) {
+  const hour = toHourNumber(time)
+  if (hour === null) return null
+  return String(hour).padStart(2, '0')
 }
 
-function nextHourLabel(hour) {
-  const start = String(hour).padStart(2, '0')
-  const end = String((hour + 1) % 24).padStart(2, '0')
-  return `${start}-${end}`
+function shiftByHour(hour) {
+  if (hour >= 0 && hour <= 7) return '1º Turno'
+  if (hour >= 8 && hour <= 15) return '2º Turno'
+  return '3º Turno'
+}
+
+function rowKey(date, plant, time) {
+  return `${date}|${plant}|${normalizeHour(time)}`
 }
 
 function fixedDayRows(date, plant) {
   return Array.from({ length: 24 }, (_, hour) => ({
-    id: `fixed-${date}-${plant}-${hour}`,
+    id: `novo-${date}-${plant}-${hour}`,
     date,
     plant,
-    time: nextHourLabel(hour),
-    status: 'Pendente',
+    time: `${String(hour).padStart(2, '0')}:00`,
+    shift: shiftByHour(hour),
+    letter: '',
+    status: 'pendente',
     sf1: false,
     htt1: false,
     npo1: false,
     fineNpo: false,
     fineHtt: false,
+    ccco: false,
     sampler: '',
     badge: '',
-    notes: ''
+    realTime: '',
+    notes: '',
+    remote: false
   }))
 }
 
-function mergeFixedRows(baseRows, scheduleRows) {
+function mergeFixedRows(baseRows, scheduleRows, drafts) {
   return baseRows.map((base) => {
-    const saved = scheduleRows.find((item) => String(item.time) === String(base.time))
-    return saved ? { ...base, ...saved } : base
+    const saved = scheduleRows.find((item) => normalizeHour(item.time) === normalizeHour(base.time))
+    const merged = saved ? { ...base, ...saved, remote: true } : base
+    return { ...merged, ...(drafts[rowKey(base.date, base.plant, base.time)] || {}) }
   })
 }
 
-export default function Collections({ schedule = [], updateCollection, generateFullDay, reloadCollections, isSaving }) {
+function statusLabel(status) {
+  const labels = {
+    pendente: 'Pendente',
+    coletado: 'Realizada',
+    nao_realizado: 'Não realizada',
+    parcial: 'Parcial',
+    atrasado: 'Atrasado'
+  }
+  return labels[status] || status || 'Pendente'
+}
+
+export default function Collections({ schedule = [], updateCollection, reloadCollections, isSaving, loggedUser }) {
   const [tableBase, setTableBase] = useState({
     date: today(),
-    plant: 'Planta 01',
-    shift: 'Todos',
-    letter: 'Todas',
-    status: 'Todos'
+    plant: 'Planta 01'
   })
+  const [drafts, setDrafts] = useState({})
 
   function setBaseField(field, value) {
     setTableBase((current) => ({ ...current, [field]: value }))
+    setDrafts({})
   }
+
+  function handleReload() {
+    reloadCollections?.({ date: tableBase.date, plant: tableBase.plant })
+  }
+
+  useEffect(() => {
+    handleReload()
+  }, [tableBase.date, tableBase.plant])
 
   const scheduleForBase = useMemo(() => {
     return schedule.filter((item) => {
-      const dateOk = normalizeDate(item.date) === tableBase.date
-      const plantOk = matchesFilter(item.plant, tableBase.plant, 'Todas')
-      const shiftOk = matchesFilter(item.shift, tableBase.shift, 'Todos')
-      const letterOk = matchesFilter(item.letter, tableBase.letter, 'Todas')
-      const statusOk = matchesFilter(item.status, tableBase.status, 'Todos')
-
-      return dateOk && plantOk && shiftOk && letterOk && statusOk
+      return normalizeDate(item.date) === tableBase.date && String(item.plant || '') === tableBase.plant
     })
   }, [schedule, tableBase])
 
   const rows = useMemo(() => {
-    const fixedRows = fixedDayRows(tableBase.date, tableBase.plant)
-    return mergeFixedRows(fixedRows, scheduleForBase)
-  }, [tableBase.date, tableBase.plant, scheduleForBase])
+    return mergeFixedRows(fixedDayRows(tableBase.date, tableBase.plant), scheduleForBase, drafts)
+  }, [tableBase.date, tableBase.plant, scheduleForBase, drafts])
 
-  function handleReload() {
-    reloadCollections?.({
-      date: tableBase.date,
-      plant: tableBase.plant
-    })
+  const summary = useMemo(() => {
+    return {
+      total: rows.length,
+      done: rows.filter((item) => item.status === 'coletado').length,
+      pending: rows.filter((item) => item.status === 'pendente').length,
+      fine: rows.filter((item) => item.fineNpo || item.fineHtt).length
+    }
+  }, [rows])
+
+  function updateDraft(row, field, value) {
+    const key = rowKey(row.date, row.plant, row.time)
+    setDrafts((current) => ({
+      ...current,
+      [key]: {
+        ...(current[key] || {}),
+        [field]: value
+      }
+    }))
   }
 
-  function handlePrepareTable() {
-    generateFullDay?.({
-      date: tableBase.date,
-      plant: tableBase.plant,
-      shift: tableBase.shift === 'Todos' ? '1º Turno' : tableBase.shift,
-      letter: tableBase.letter === 'Todas' ? 'A' : tableBase.letter
-    })
-  }
+  function saveRow(row) {
+    const hour = toHourNumber(row.time) ?? 0
+    const status = row.status || 'pendente'
+    const shouldSetRealTime = status === 'coletado' && !row.realTime
 
-  function handleChange(row, field, value) {
-    updateCollection?.(row.id, {
+    updateCollection?.({
       ...row,
       date: tableBase.date,
       plant: tableBase.plant,
-      [field]: value
+      time: `${String(hour).padStart(2, '0')}:00`,
+      shift: row.shift || shiftByHour(hour),
+      sampler: row.sampler || loggedUser?.name || '',
+      badge: row.badge || loggedUser?.badge || '',
+      realTime: shouldSetRealTime ? nowTime() : row.realTime,
+      fine: Boolean(row.fineNpo || row.fineHtt)
     })
   }
 
@@ -109,7 +145,7 @@ export default function Collections({ schedule = [], updateCollection, generateF
       <PageHeader
         eyebrow="Rotina de campo"
         title="Coletas programadas"
-        description="Tabela fixa de lançamento: selecione a data e a planta, registre as coletas nas faixas horárias e salve somente o que mudar."
+        description="Modelo fixo no padrão MonPlant: a tabela mantém as 24 faixas horárias e muda somente conforme a data e a planta selecionadas."
         actions={(
           <>
             <button className="btn btn--ghost" type="button" onClick={handleReload} disabled={isSaving}>
@@ -122,10 +158,10 @@ export default function Collections({ schedule = [], updateCollection, generateF
         )}
       />
 
-      <div className="generation-card generation-card--fixed">
+      <div className="generation-card generation-card--fixed collections-filter">
         <div>
-          <h3>Base fixa de lançamento</h3>
-          <p>A tabela permanece com as 24 faixas. Altere somente a data, planta ou filtros para lançar.</p>
+          <h3>Base de lançamento</h3>
+          <p>Selecione a data e a planta. As linhas permanecem fixas para lançamento direto, sem gerar uma nova tabela manualmente.</p>
         </div>
 
         <label>
@@ -140,105 +176,71 @@ export default function Collections({ schedule = [], updateCollection, generateF
             <option>Planta 02</option>
           </select>
         </label>
-
-        <label>
-          Turno
-          <select value={tableBase.shift} onChange={(e) => setBaseField('shift', e.target.value)}>
-            <option>Todos</option>
-            <option>1º Turno</option>
-            <option>2º Turno</option>
-            <option>3º Turno</option>
-          </select>
-        </label>
-
-        <label>
-          Letra
-          <select value={tableBase.letter} onChange={(e) => setBaseField('letter', e.target.value)}>
-            <option>Todas</option>
-            <option>A</option>
-            <option>B</option>
-            <option>C</option>
-            <option>D</option>
-          </select>
-        </label>
-
-        <label>
-          Status
-          <select value={tableBase.status} onChange={(e) => setBaseField('status', e.target.value)}>
-            <option>Todos</option>
-            <option>Pendente</option>
-            <option>Realizada</option>
-            <option>Não realizada</option>
-          </select>
-        </label>
-
-        <button className="btn btn--orange" type="button" onClick={handlePrepareTable} disabled={isSaving}>
-          <Save size={17} /> Preparar base
-        </button>
       </div>
 
-      <div className="filter-summary">
-        Exibindo <strong>{rows.length}</strong> faixas fixas para <strong>{tableBase.plant}</strong> em <strong>{tableBase.date}</strong>
+      <div className="collection-summary-grid">
+        <div><span>Total de faixas</span><strong>{summary.total}</strong></div>
+        <div><span>Realizadas</span><strong>{summary.done}</strong></div>
+        <div><span>Pendentes</span><strong>{summary.pending}</strong></div>
+        <div><span>Com fino agregado</span><strong>{summary.fine}</strong></div>
       </div>
 
       <div className="table-card">
         <div className="table-card__header">
           <div>
             <h3>Lançamento das coletas</h3>
-            <span>Controle por faixa horária, pilhas amostradas e fino agregado.</span>
+            <span>{tableBase.plant} | {tableBase.date} | Tabela fixa 00-01 até 23-00.</span>
           </div>
         </div>
 
-        <div className="table-wrapper">
-          <table>
+        <div className="table-wrapper table-wrapper--fixed">
+          <table className="collections-table">
             <thead>
               <tr>
                 <th>Faixa</th>
+                <th>Turno</th>
                 <th>Status</th>
                 <th>Amostrador</th>
                 <th>Cadastro</th>
                 <th>SF1</th>
                 <th>HTT1</th>
                 <th>NPO1</th>
-                <th>Fino agregado NPO</th>
-                <th>Fino agregado HTT</th>
+                <th>Fino NPO</th>
+                <th>Fino HTT</th>
+                <th>CCCO</th>
+                <th>Hora real</th>
                 <th>Observações</th>
+                <th>Ação</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id}>
-                  <td>{formatHourRange(row.time)}</td>
+                <tr key={rowKey(row.date, row.plant, row.time)}>
+                  <td className="sticky-cell"><strong>{formatHourRange(row.time)}</strong></td>
+                  <td>{row.shift || '-'}</td>
                   <td>
-                    <select value={row.status || 'Pendente'} onChange={(e) => handleChange(row, 'status', e.target.value)} disabled={isSaving}>
-                      <option>Pendente</option>
-                      <option>Realizada</option>
-                      <option>Não realizada</option>
+                    <select value={row.status || 'pendente'} onChange={(e) => updateDraft(row, 'status', e.target.value)} disabled={isSaving}>
+                      <option value="pendente">Pendente</option>
+                      <option value="coletado">Realizada</option>
+                      <option value="nao_realizado">Não realizada</option>
+                      <option value="parcial">Parcial</option>
                     </select>
                   </td>
+                  <td><input value={row.sampler || ''} onChange={(e) => updateDraft(row, 'sampler', e.target.value)} placeholder="Nome" disabled={isSaving} /></td>
+                  <td><input value={row.badge || ''} onChange={(e) => updateDraft(row, 'badge', e.target.value)} placeholder="Credencial" disabled={isSaving} /></td>
+                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.sf1)} onChange={(e) => updateDraft(row, 'sf1', e.target.checked)} disabled={isSaving} /></td>
+                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.htt1)} onChange={(e) => updateDraft(row, 'htt1', e.target.checked)} disabled={isSaving} /></td>
+                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.npo1)} onChange={(e) => updateDraft(row, 'npo1', e.target.checked)} disabled={isSaving} /></td>
+                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.fineNpo)} onChange={(e) => updateDraft(row, 'fineNpo', e.target.checked)} disabled={isSaving} /></td>
+                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.fineHtt)} onChange={(e) => updateDraft(row, 'fineHtt', e.target.checked)} disabled={isSaving} /></td>
+                  <td className="check-cell"><input type="checkbox" checked={Boolean(row.ccco)} onChange={(e) => updateDraft(row, 'ccco', e.target.checked)} disabled={isSaving} /></td>
+                  <td>{formatClockTime(row.realTime)}</td>
+                  <td><input className="notes-input" value={row.notes || ''} onChange={(e) => updateDraft(row, 'notes', e.target.value)} placeholder="Observações" disabled={isSaving} /></td>
                   <td>
-                    <input value={row.sampler || ''} onChange={(e) => handleChange(row, 'sampler', e.target.value)} placeholder="Nome" disabled={isSaving} />
-                  </td>
-                  <td>
-                    <input value={row.badge || ''} onChange={(e) => handleChange(row, 'badge', e.target.value)} placeholder="Credencial" disabled={isSaving} />
-                  </td>
-                  <td>
-                    <input type="checkbox" checked={Boolean(row.sf1)} onChange={(e) => handleChange(row, 'sf1', e.target.checked)} disabled={isSaving} />
-                  </td>
-                  <td>
-                    <input type="checkbox" checked={Boolean(row.htt1)} onChange={(e) => handleChange(row, 'htt1', e.target.checked)} disabled={isSaving} />
-                  </td>
-                  <td>
-                    <input type="checkbox" checked={Boolean(row.npo1)} onChange={(e) => handleChange(row, 'npo1', e.target.checked)} disabled={isSaving} />
-                  </td>
-                  <td>
-                    <input type="checkbox" checked={Boolean(row.fineNpo)} onChange={(e) => handleChange(row, 'fineNpo', e.target.checked)} disabled={isSaving} />
-                  </td>
-                  <td>
-                    <input type="checkbox" checked={Boolean(row.fineHtt)} onChange={(e) => handleChange(row, 'fineHtt', e.target.checked)} disabled={isSaving} />
-                  </td>
-                  <td>
-                    <input value={row.notes || ''} onChange={(e) => handleChange(row, 'notes', e.target.value)} placeholder="Observações" disabled={isSaving} />
+                    <button className="table-action table-action--primary" type="button" onClick={() => saveRow(row)} disabled={isSaving}>
+                      <Save size={15} /> Salvar
+                    </button>
+                    <small className="status-hint">{statusLabel(row.status)}</small>
                   </td>
                 </tr>
               ))}

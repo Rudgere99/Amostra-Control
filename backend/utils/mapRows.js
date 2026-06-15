@@ -14,6 +14,8 @@ export function mapColeta(row) {
     sampler: row.amostrador_nome,
     badge: row.cadastro,
     fine: row.contem_fino_agregado,
+    fineNpo: row.fino_agregado_npo,
+    fineHtt: row.fino_agregado_htt,
     ccco: row.informado_ccco,
     status: row.status,
     notes: row.observacoes,

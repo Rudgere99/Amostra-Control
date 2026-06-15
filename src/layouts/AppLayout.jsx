@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Bell, Menu, Search } from 'lucide-react'
 
-export default function AppLayout({ children, navItems, activePage, onChangePage }) {
+export default function AppLayout({ children, navItems, activePage, onChangePage, currentUser, onLogout }) {
   const [clock, setClock] = useState('--:--:--')
   const [date, setDate] = useState('--/--/----')
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -64,6 +64,12 @@ export default function AppLayout({ children, navItems, activePage, onChangePage
           </div>
 
           <div className="topbar__right">
+            {currentUser && (
+              <div className="user-pill">
+                <strong>{currentUser.name || currentUser.nome}</strong>
+                <span>{currentUser.profile || currentUser.perfil} • Letra {currentUser.letter || currentUser.letra || '-'}</span>
+              </div>
+            )}
             <button className="notification-btn" type="button">
               <Bell size={18} />
               <span></span>
@@ -72,6 +78,7 @@ export default function AppLayout({ children, navItems, activePage, onChangePage
               <strong>{clock}</strong>
               <span>{date}</span>
             </div>
+            {onLogout && <button className="btn btn--ghost" type="button" onClick={onLogout}>Sair</button>}
           </div>
         </header>
 

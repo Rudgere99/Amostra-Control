@@ -63,6 +63,13 @@ export async function generateDaySchedule(payload) {
   })
 }
 
+export async function loginUser(payload) {
+  return request('/api/usuarios/login', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
 export async function fetchUsers() {
   return request('/api/usuarios')
 }

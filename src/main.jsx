@@ -7,6 +7,7 @@ import Collections from './pages/Collections.jsx'
 import History from './pages/History.jsx'
 import Reports from './pages/Reports.jsx'
 import UsersPage from './pages/UsersPage.jsx'
+import LoginPage from './pages/LoginPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import { initialSchedule } from './data/sampleSchedule.js'
 import { buildStats } from './utils/status.js'
@@ -15,12 +16,12 @@ import './styles.css'
 import './api-status.css'
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'collections', label: 'Coletas', icon: ClipboardCheck },
-  { id: 'history', label: 'Histórico', icon: CalendarClock },
-  { id: 'reports', label: 'Relatórios', icon: FileText },
-  { id: 'users', label: 'Usuários', icon: Users },
-  { id: 'settings', label: 'Configurações', icon: Settings }
+  { id: 'dashboard', label: 'Dashboard', icon: Home, allowedProfiles: ['Amostrador', 'Controle'] },
+  { id: 'collections', label: 'Coletas', icon: ClipboardCheck, allowedProfiles: ['Amostrador', 'Controle'] },
+  { id: 'history', label: 'Histórico', icon: CalendarClock, allowedProfiles: ['Amostrador', 'Controle'] },
+  { id: 'reports', label: 'Relatórios', icon: FileText, allowedProfiles: ['Amostrador', 'Controle'] },
+  { id: 'users', label: 'Usuários', icon: Users, allowedProfiles: ['Controle'] },
+  { id: 'settings', label: 'Configurações', icon: Settings, allowedProfiles: ['Controle'] }
 ]
 
 function normalizeRemoteRows(rows) {
@@ -29,6 +30,10 @@ function normalizeRemoteRows(rows) {
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('amostra-control-user')
+    return saved ? JSON.parse(saved) : null
+  })
   const [schedule, setSchedule] = useState(initialSchedule)
   const [alertVisible, setAlertVisible] = useState(true)
   const [apiStatus, setApiStatus] = useState(hasApiConfigured() ? 'Conectando ao Railway...' : 'API não configurada. Usando dados locais.')
@@ -104,10 +109,41 @@ function App() {
     }
   }
 
+
+  const currentProfile = currentUser?.profile || currentUser?.perfil
+  const allowedNavItems = useMemo(() => navItems.filter((item) => item.allowedProfiles.includes(currentProfile)), [currentProfile])
+
+  function handleLogin(user) {
+    localStorage.setItem('amostra-control-user', JSON.stringify(user))
+    setCurrentUser(user)
+    setActivePage('dashboard')
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('amostra-control-user')
+    setCurrentUser(null)
+    setActivePage('dashboard')
+  }
+
+  function changePage(pageId) {
+    const allowed = allowedNavItems.some((item) => item.id === pageId)
+    setActivePage(allowed ? pageId : 'dashboard')
+  }
+
+  useEffect(() => {
+    if (currentUser && !allowedNavItems.some((item) => item.id === activePage)) {
+      setActivePage('dashboard')
+    }
+  }, [activePage, allowedNavItems, currentUser])
+
+  if (!currentUser) {
+    return <LoginPage onLogin={handleLogin} />
+  }
+
   const commonProps = { schedule, stats, updateCollection, alertVisible, setAlertVisible, apiStatus, isSaving, generateFullDay, reloadCollections: loadCollections }
 
   const page = {
-    dashboard: <Dashboard {...commonProps} onOpenCollections={() => setActivePage('collections')} />,
+    dashboard: <Dashboard {...commonProps} onOpenCollections={() => changePage('collections')} />,
     collections: <Collections {...commonProps} />,
     history: <History />,
     reports: <Reports schedule={schedule} stats={stats} />,
@@ -116,7 +152,7 @@ function App() {
   }[activePage]
 
   return (
-    <AppLayout navItems={navItems} activePage={activePage} onChangePage={setActivePage}>
+    <AppLayout navItems={allowedNavItems} activePage={activePage} onChangePage={changePage} currentUser={currentUser} onLogout={handleLogout}>
       <div className="api-status-bar">
         <span className={apiStatus.includes('Conectado') || apiStatus.includes('salvo') || apiStatus.includes('gerada') ? 'api-dot api-dot--ok' : 'api-dot'}></span>
         {apiStatus}{isSaving ? ' | Salvando...' : ''}

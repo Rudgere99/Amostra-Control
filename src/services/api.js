@@ -74,6 +74,13 @@ export async function createUser(payload) {
   })
 }
 
+export async function loginUser(payload) {
+  return request('/api/usuarios/login', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
 export async function updateUserStatus(id, active) {
   return request(`/api/usuarios/${id}/status`, {
     method: 'PATCH',

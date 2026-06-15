@@ -31,7 +31,34 @@ async function request(path, options = {}) {
 }
 
 
+
+let cachedUserRoutePaths = null
+
+function routeUnavailableError() {
+  const error = new Error('API de cadastros não disponível neste backend.')
+  error.status = 404
+  return error
+}
+
+async function getUserRoutePaths() {
+  if (cachedUserRoutePaths) return cachedUserRoutePaths
+
+  const fallbackPaths = ['/api/cadastros', '/api/cadastro', '/api/usuarios']
+
+  try {
+    const metadata = await request('/')
+    const routes = Array.isArray(metadata?.routes) ? metadata.routes : []
+    cachedUserRoutePaths = fallbackPaths.filter((path) => routes.includes(path))
+    return cachedUserRoutePaths
+  } catch (error) {
+    cachedUserRoutePaths = fallbackPaths
+    return cachedUserRoutePaths
+  }
+}
+
 async function requestWithRouteFallback(paths, options = {}) {
+  if (!paths.length) throw routeUnavailableError()
+
   let lastError
 
   for (const path of paths) {
@@ -82,18 +109,19 @@ export async function generateDaySchedule(payload) {
 }
 
 export async function fetchUsers() {
-  return requestWithRouteFallback(['/api/cadastros', '/api/cadastro', '/api/usuarios'])
+  return requestWithRouteFallback(await getUserRoutePaths())
 }
 
 export async function createUser(payload) {
-  return requestWithRouteFallback(['/api/cadastros', '/api/cadastro', '/api/usuarios'], {
+  return requestWithRouteFallback(await getUserRoutePaths(), {
     method: 'POST',
     body: JSON.stringify(payload)
   })
 }
 
 export async function updateUserStatus(id, active) {
-  return requestWithRouteFallback([`/api/cadastros/${id}/status`, `/api/cadastro/${id}/status`, `/api/usuarios/${id}/status`], {
+  const paths = (await getUserRoutePaths()).map((path) => `${path}/${id}/status`)
+  return requestWithRouteFallback(paths, {
     method: 'PATCH',
     body: JSON.stringify({ active })
   })

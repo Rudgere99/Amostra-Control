@@ -14,6 +14,10 @@ export default function UsersPage() {
   const [status, setStatus] = useState(hasApiConfigured() ? 'Conectando ao Railway...' : 'API não configurada. Exibindo modelo local.')
   const [saving, setSaving] = useState(false)
 
+  function isRouteUnavailable(error) {
+    return error?.status === 404
+  }
+
   async function loadUsers() {
     if (!hasApiConfigured()) return
 
@@ -22,6 +26,11 @@ export default function UsersPage() {
       setUsers(Array.isArray(data) ? data : [])
       setStatus('Usuários carregados do Railway')
     } catch (error) {
+      if (isRouteUnavailable(error)) {
+        setStatus('API de cadastros indisponível neste backend. Exibindo modelo local.')
+        return
+      }
+
       console.error(error)
       setStatus(`Erro ao carregar usuários: ${error.message}`)
     }
@@ -58,6 +67,13 @@ export default function UsersPage() {
 
       setForm({ name: '', badge: '', profile: 'amostrador' })
     } catch (error) {
+      if (isRouteUnavailable(error)) {
+        setUsers((current) => [{ id: Date.now(), ...form, active: true }, ...current])
+        setForm({ name: '', badge: '', profile: 'amostrador' })
+        setStatus('API de cadastros indisponível neste backend. Cadastro mantido apenas localmente.')
+        return
+      }
+
       console.error(error)
       alert(`Não foi possível salvar o usuário: ${error.message}`)
       setStatus(`Erro ao salvar usuário: ${error.message}`)

@@ -11,7 +11,7 @@ import SettingsPage from './pages/SettingsPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { initialSchedule } from './data/sampleSchedule.js'
 import { buildStats } from './utils/status.js'
-import { createCollection, fetchCollections, generateDaySchedule, hasApiConfigured, updateCollectionApi } from './services/api.js'
+import { createCollection, fetchCollections, fetchDashboardSummary, generateDaySchedule, hasApiConfigured, updateCollectionApi } from './services/api.js'
 import './styles.css'
 import './api-status.css'
 
@@ -44,8 +44,27 @@ function App() {
   const [alertVisible, setAlertVisible] = useState(true)
   const [apiStatus, setApiStatus] = useState(hasApiConfigured() ? 'Conectando ao Railway...' : 'API não configurada. Usando dados locais.')
   const [isSaving, setIsSaving] = useState(false)
+  const [dashboardStats, setDashboardStats] = useState(null)
 
-  const stats = useMemo(() => buildStats(schedule), [schedule])
+  const localStats = useMemo(() => buildStats(schedule), [schedule])
+  const stats = dashboardStats || localStats
+
+
+  async function loadDashboardStats(filters = {}) {
+    if (!hasApiConfigured()) {
+      setDashboardStats(null)
+      return
+    }
+
+    try {
+      const data = await fetchDashboardSummary(filters)
+      setDashboardStats(data)
+    } catch (error) {
+      console.error(error)
+      setDashboardStats(null)
+      setApiStatus(`Falha ao carregar dashboard: ${error.message}`)
+    }
+  }
 
   async function loadCollections(filters = {}) {
     if (!hasApiConfigured()) return
@@ -65,6 +84,7 @@ function App() {
   useEffect(() => {
     if (loggedUser) {
       loadCollections()
+      loadDashboardStats()
     }
   }, [loggedUser])
 
@@ -75,7 +95,8 @@ function App() {
       let savedRow = {
         ...updatedRow,
         sampler: updatedRow.sampler || loggedUser?.name || '',
-        badge: updatedRow.badge || loggedUser?.badge || ''
+        badge: updatedRow.badge || loggedUser?.badge || '',
+        letter: updatedRow.letter || loggedUser?.letter || ''
       }
 
       if (hasApiConfigured()) {
@@ -87,6 +108,7 @@ function App() {
 
         savedRow = { ...savedRow, remote: true }
         setApiStatus('Registro salvo no Railway')
+        await loadDashboardStats()
       }
 
       setSchedule((current) => {
@@ -110,6 +132,7 @@ function App() {
     try {
       await generateDaySchedule(payload)
       await loadCollections({ date: payload.date, plant: payload.plant })
+      await loadDashboardStats({ date: payload.date })
       setApiStatus('Programação 00-01 até 23-00 gerada no Railway')
       setActivePage('collections')
     } catch (error) {
@@ -136,7 +159,7 @@ function App() {
   const page = {
     dashboard: <Dashboard {...commonProps} onOpenCollections={() => setActivePage('collections')} />,
     collections: <Collections {...commonProps} />,
-    history: <History />,
+    history: <History schedule={schedule} />,
     reports: <Reports schedule={schedule} stats={stats} />,
     users: <UsersPage />,
     settings: <SettingsPage />

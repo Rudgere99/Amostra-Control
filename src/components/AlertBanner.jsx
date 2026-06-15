@@ -1,5 +1,5 @@
 import React from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from './LocalIcons.jsx'
 
 export default function AlertBanner({ visible, onClose, onOpenCollections }) {
   if (!visible) return null

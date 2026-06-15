@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { RefreshCcw, UserPlus } from 'lucide-react'
+import { RefreshCcw, UserPlus } from '../components/LocalIcons.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import { createUser, fetchUsers, hasApiConfigured, updateUserStatus } from '../services/api.js'
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { LogIn } from 'lucide-react'
+import { LogIn } from '../components/LocalIcons.jsx'
 import { hasApiConfigured, loginUser } from '../services/api.js'
 
 export default function LoginPage({ onLogin }) {

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Activity, AlertTriangle, CheckCircle2, Clock3, Target } from 'lucide-react'
+import { Activity, AlertTriangle, CheckCircle2, Clock3, Target } from '../components/LocalIcons.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import StatCard from '../components/StatCard.jsx'
 import AlertBanner from '../components/AlertBanner.jsx'

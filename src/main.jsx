@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { CalendarClock, ClipboardCheck, FileText, Home, Settings, Users } from 'lucide-react'
+import { CalendarClock, ClipboardCheck, FileText, Home, Settings, Users } from './components/LocalIcons.jsx'
 import AppLayout from './layouts/AppLayout.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Collections from './pages/Collections.jsx'

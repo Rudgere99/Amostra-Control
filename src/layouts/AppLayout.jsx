@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Bell, Menu, Search } from 'lucide-react'
+import { Bell, Menu, Search } from '../components/LocalIcons.jsx'
 
 export default function AppLayout({ children, navItems, activePage, onChangePage }) {
   const [clock, setClock] = useState('--:--:--')

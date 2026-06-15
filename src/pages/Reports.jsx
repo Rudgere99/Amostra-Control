@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Download } from 'lucide-react'
+import { Download } from '../components/LocalIcons.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import StatCard from '../components/StatCard.jsx'
 import { exportScheduleCsv } from '../utils/exportCsv.js'

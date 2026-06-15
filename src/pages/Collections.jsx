@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Download, RefreshCcw, Save } from 'lucide-react'
+import { Download, RefreshCcw, Save } from '../components/LocalIcons.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import { exportScheduleCsv } from '../utils/exportCsv.js'
 import { formatClockTime, formatHourRange, toHourNumber } from '../utils/time.js'

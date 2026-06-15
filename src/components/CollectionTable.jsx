@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { PencilLine } from 'lucide-react'
+import { PencilLine } from './LocalIcons.jsx'
 import StatusBadge from './StatusBadge.jsx'
 import SampleBadge from './SampleBadge.jsx'
 import CollectionModal from './CollectionModal.jsx'

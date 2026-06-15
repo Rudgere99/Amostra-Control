@@ -64,18 +64,18 @@ export async function generateDaySchedule(payload) {
 }
 
 export async function fetchUsers() {
-  return request('/api/usuarios')
+  return request('/api/cadastros')
 }
 
 export async function createUser(payload) {
-  return request('/api/usuarios', {
+  return request('/api/cadastros', {
     method: 'POST',
     body: JSON.stringify(payload)
   })
 }
 
 export async function updateUserStatus(id, active) {
-  return request(`/api/usuarios/${id}/status`, {
+  return request(`/api/cadastros/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ active })
   })

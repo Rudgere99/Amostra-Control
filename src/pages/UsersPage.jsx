@@ -84,7 +84,7 @@ export default function UsersPage() {
       </form>
 
       <div className="table-card">
-        <div className="table-card__header"><div><h3>Usuários cadastrados</h3><span>Lista integrada com a API /api/usuarios</span></div></div>
+        <div className="table-card__header"><div><h3>Cadastros</h3><span>Lista integrada com a API /api/cadastros</span></div></div>
         <div className="table-wrapper">
           <table>
             <thead><tr><th>Nome</th><th>Cadastro</th><th>Perfil</th><th>Status</th></tr></thead>

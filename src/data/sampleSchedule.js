@@ -21,7 +21,8 @@ export const initialSchedule = Array.from({ length: 24 }, (_, index) => ({
   sampler: '',
   badge: '',
   realTime: '',
-  fine: false,
+  fineNpo: false,
+  fineHtt: false,
   ccco: false,
   status: 'pendente',
   notes: ''

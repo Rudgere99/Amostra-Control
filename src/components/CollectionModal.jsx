@@ -9,7 +9,8 @@ export default function CollectionModal({ row, onClose, onSave }) {
     sf1: row.sf1,
     htt1: row.htt1,
     npo1: row.npo1,
-    fine: row.fine,
+    fineNpo: row.fineNpo || false,
+    fineHtt: row.fineHtt || false,
     ccco: row.ccco,
     notes: row.notes || '',
     realTime: row.realTime || nowTime()
@@ -55,7 +56,8 @@ export default function CollectionModal({ row, onClose, onSave }) {
           <label>Data<input value={row.date} readOnly /></label>
           <label>Hora programada<input value={formatHourRange(row.time)} readOnly /></label>
           <label>Hora real<input value={formatClockTime(form.realTime)} readOnly /></label>
-          <label>Contém fino agregado?<select value={form.fine ? 'sim' : 'nao'} onChange={(e) => setField('fine', e.target.value === 'sim')}><option value="nao">Não</option><option value="sim">Sim</option></select></label>
+          <label>Fino agregado NPO?<select value={form.fineNpo ? 'sim' : 'nao'} onChange={(e) => setField('fineNpo', e.target.value === 'sim')}><option value="nao">Não</option><option value="sim">Sim</option></select></label>
+          <label>Fino agregado HTT?<select value={form.fineHtt ? 'sim' : 'nao'} onChange={(e) => setField('fineHtt', e.target.value === 'sim')}><option value="nao">Não</option><option value="sim">Sim</option></select></label>
           <label>SF1 coletada?<select value={form.sf1 ? 'sim' : 'nao'} onChange={(e) => setField('sf1', e.target.value === 'sim')}><option value="sim">Sim</option><option value="nao">Não</option></select></label>
           <label>HTT1 coletada?<select value={form.htt1 ? 'sim' : 'nao'} onChange={(e) => setField('htt1', e.target.value === 'sim')}><option value="sim">Sim</option><option value="nao">Não</option></select></label>
           <label>NPO1 coletada?<select value={form.npo1 ? 'sim' : 'nao'} onChange={(e) => setField('npo1', e.target.value === 'sim')}><option value="sim">Sim</option><option value="nao">Não</option></select></label>

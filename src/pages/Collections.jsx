@@ -36,7 +36,8 @@ function emptyCollectionSlot(date, plant, hour) {
     sampler: '',
     badge: '',
     realTime: '',
-    fine: false,
+    fineNpo: false,
+  fineHtt: false,
     ccco: false,
     status: 'pendente',
     notes: ''

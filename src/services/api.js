@@ -51,8 +51,15 @@ export async function updateCollectionApi(id, payload) {
   })
 }
 
-export async function fetchDashboardSummary(date) {
-  const query = date ? `?date=${encodeURIComponent(date)}` : ''
+export async function fetchDashboardSummary(filters = {}) {
+  const params = new URLSearchParams()
+  if (typeof filters === 'string') {
+    params.set('date', filters)
+  } else {
+    if (filters.date) params.set('date', filters.date)
+    if (filters.plant) params.set('plant', filters.plant)
+  }
+  const query = params.toString() ? `?${params.toString()}` : ''
   return request(`/api/dashboard/summary${query}`)
 }
 

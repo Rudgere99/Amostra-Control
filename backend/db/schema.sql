@@ -3,9 +3,12 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nome VARCHAR(150) NOT NULL,
   cadastro VARCHAR(50) NOT NULL UNIQUE,
   perfil VARCHAR(50) DEFAULT 'amostrador',
+  letra VARCHAR(10),
   ativo BOOLEAN DEFAULT TRUE,
   criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS letra VARCHAR(10);
 
 CREATE TABLE IF NOT EXISTS programacao_amostragem (
   id SERIAL PRIMARY KEY,
@@ -45,3 +48,4 @@ CREATE INDEX IF NOT EXISTS idx_programacao_data ON programacao_amostragem(data_p
 CREATE INDEX IF NOT EXISTS idx_coletas_data ON coletas_amostras(data_coleta);
 CREATE INDEX IF NOT EXISTS idx_coletas_status ON coletas_amostras(status);
 CREATE INDEX IF NOT EXISTS idx_coletas_cadastro ON coletas_amostras(cadastro);
+CREATE INDEX IF NOT EXISTS idx_usuarios_letra ON usuarios(letra);

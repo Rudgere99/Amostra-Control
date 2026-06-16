@@ -456,3 +456,43 @@ tr:hover td { background: rgba(56, 189, 248, .055); }
   .alert-banner__actions { margin-left: 0; }
   .clock-card { min-width: 108px; }
 }
+
+.contingency-alert {
+  border-color: rgba(251, 113, 133, .34);
+  background: linear-gradient(135deg, rgba(251, 113, 133, .14), rgba(56, 189, 248, .08));
+}
+
+.contingency-filter {
+  grid-template-columns: minmax(260px, 1fr) minmax(160px, 220px) minmax(160px, 220px) minmax(170px, 230px);
+}
+
+.contingency-table {
+  min-width: 1780px;
+}
+
+.contingency-table input,
+.contingency-table select,
+.contingency-table textarea {
+  min-width: 120px;
+  padding: 8px 10px;
+}
+
+.contingency-table textarea {
+  min-width: 260px;
+  min-height: 42px;
+  max-height: 92px;
+}
+
+.empty-state {
+  color: var(--muted);
+  padding: 28px 20px;
+  text-align: center;
+}
+
+@media (max-width: 1120px) {
+  .contingency-filter { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 820px) {
+  .contingency-filter { grid-template-columns: 1fr; }
+}

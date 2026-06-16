@@ -627,3 +627,112 @@ tr:hover td { background: rgba(56, 189, 248, .055); }
 .trindade-logo--compact .trindade-logo__fallback span {
   font-size: 13px;
 }
+
+.best-practices-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+  gap: 18px;
+  align-items: stretch;
+  padding: 22px;
+  border: 1px solid rgba(56, 189, 248, .26);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 12% 18%, rgba(56, 189, 248, .18), transparent 22rem),
+    linear-gradient(160deg, rgba(15, 23, 42, .86), rgba(30, 41, 59, .64));
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.best-practices-hero h3 {
+  margin: 7px 0 8px;
+  font-size: clamp(22px, 2.3vw, 30px);
+  letter-spacing: -.05em;
+}
+
+.best-practices-hero p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 880px;
+}
+
+.best-practices-hero__badge {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-height: 150px;
+  padding: 18px;
+  border: 1px solid rgba(34, 197, 94, .26);
+  border-radius: 20px;
+  background: rgba(34, 197, 94, .10);
+  color: #bbf7d0;
+}
+
+.best-practices-hero__badge strong {
+  color: var(--text);
+  font-size: 18px;
+  letter-spacing: -.03em;
+}
+
+.best-practices-hero__badge span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.best-practices-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.best-practice-card {
+  display: flex;
+  gap: 14px;
+  min-height: 164px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: linear-gradient(160deg, rgba(15, 23, 42, .84), rgba(15, 23, 42, .62));
+  box-shadow: var(--shadow-soft);
+}
+
+.best-practice-card__icon {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(56, 189, 248, .28);
+  border-radius: 16px;
+  background: rgba(56, 189, 248, .10);
+  color: var(--blue-soft);
+}
+
+.best-practice-card span {
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.best-practice-card h3 {
+  margin: 5px 0 7px;
+  font-size: 18px;
+  letter-spacing: -.04em;
+}
+
+.best-practice-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.62;
+  font-weight: 500;
+}
+
+@media (max-width: 1120px) {
+  .best-practices-hero,
+  .best-practices-grid {
+    grid-template-columns: 1fr;
+  }
+}

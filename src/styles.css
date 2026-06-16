@@ -426,6 +426,43 @@ tr:hover td { background: rgba(56, 189, 248, .055); }
 .login-form { display: grid; gap: 14px; }
 .login-button { width: 100%; justify-content: center; }
 .login-status { color: var(--muted); font-size: 12px; }
+.awareness-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(2, 6, 23, .78);
+  backdrop-filter: blur(12px);
+}
+.awareness-card {
+  width: min(660px, 100%);
+  background: linear-gradient(160deg, rgba(15, 23, 42, .97), rgba(30, 41, 59, .92));
+  border: 1px solid var(--border-soft);
+  border-radius: 26px;
+  box-shadow: 0 32px 120px rgba(2, 6, 23, .70);
+  padding: 28px;
+}
+.awareness-card h2 {
+  margin: 8px 0 18px;
+  font-size: clamp(26px, 4vw, 34px);
+  letter-spacing: -.05em;
+}
+.awareness-text {
+  display: grid;
+  gap: 14px;
+  color: #dbeafe;
+  line-height: 1.65;
+}
+.awareness-text p { margin: 0; }
+.awareness-text strong { color: #fff; }
+.awareness-button {
+  width: 100%;
+  margin-top: 24px;
+  justify-content: center;
+  text-transform: lowercase;
+}
 
 @media (max-width: 1120px) {
   .stats-grid, .stats-grid--four { grid-template-columns: repeat(2, 1fr); }

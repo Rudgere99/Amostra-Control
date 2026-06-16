@@ -22,6 +22,13 @@ function normalizeTime(time) {
   return value
 }
 
+function shiftByTime(time, fallback = null) {
+  const normalized = normalizeTime(time)
+  const hour = normalized ? Number(String(normalized).slice(0, 2)) : NaN
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return fallback
+  return hour >= 7 && hour <= 18 ? '1º Turno' : '2º Turno'
+}
+
 function toBoolean(value) {
   if (typeof value === 'boolean') return value
   if (typeof value === 'string') return ['true', 'sim', '1', 'yes'].includes(value.toLowerCase())
@@ -48,7 +55,7 @@ async function ensureProgramacao(client, body) {
     date,
     time,
     plant,
-    body.shift || body.turno || null,
+    shiftByTime(time, body.shift || body.turno || null),
     body.letter || body.letra || null,
     body.status || 'pendente'
   ])
@@ -145,7 +152,7 @@ router.post('/', async (req, res) => {
       time,
       realTime,
       body.plant || null,
-      body.shift || null,
+      shiftByTime(time, body.shift || null),
       body.letter || null,
       toBoolean(body.sf1),
       toBoolean(body.htt1),
@@ -214,7 +221,7 @@ router.put('/:id', async (req, res) => {
       body.date || null,
       time,
       body.plant || null,
-      body.shift || null,
+      shiftByTime(time, body.shift || null),
       body.letter || null,
       realTime,
       toBoolean(body.sf1),

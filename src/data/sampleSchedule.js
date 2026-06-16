@@ -3,9 +3,8 @@ function today() {
 }
 
 function shiftByHour(hour) {
-  if (hour >= 0 && hour <= 7) return '1º Turno'
-  if (hour >= 8 && hour <= 15) return '2º Turno'
-  return '3º Turno'
+  if (hour >= 7 && hour <= 18) return '1º Turno'
+  return '2º Turno'
 }
 
 export const initialSchedule = Array.from({ length: 24 }, (_, index) => ({

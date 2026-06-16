@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { CalendarClock, ClipboardCheck, FileText, Home, Settings, Users } from './components/LocalIcons.jsx'
+import { AlertTriangle, CalendarClock, ClipboardCheck, FileText, Home, Settings, Target, Users } from './components/LocalIcons.jsx'
 import AppLayout from './layouts/AppLayout.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Collections from './pages/Collections.jsx'
 import History from './pages/History.jsx'
+import Contingency from './pages/Contingency.jsx'
+import BestPractices from './pages/BestPractices.jsx'
 import Reports from './pages/Reports.jsx'
 import UsersPage from './pages/UsersPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
@@ -19,6 +21,8 @@ const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: Home },
   { id: 'collections', label: 'Coletas', icon: ClipboardCheck },
   { id: 'history', label: 'Histórico', icon: CalendarClock },
+  { id: 'contingency', label: 'Contingência', icon: AlertTriangle },
+  { id: 'best-practices', label: 'Boas práticas', icon: Target },
   { id: 'reports', label: 'Relatórios', icon: FileText },
   { id: 'users', label: 'Usuários', icon: Users },
   { id: 'settings', label: 'Configurações', icon: Settings }
@@ -160,18 +164,18 @@ function App() {
     dashboard: <Dashboard {...commonProps} onOpenCollections={() => setActivePage('collections')} />,
     collections: <Collections {...commonProps} />,
     history: <History schedule={schedule} />,
+    contingency: <Contingency {...commonProps} />,
+    'best-practices': <BestPractices />,
     reports: <Reports schedule={schedule} stats={stats} />,
     users: <UsersPage />,
     settings: <SettingsPage />
   }[activePage]
 
   return (
-    <AppLayout navItems={navItems} activePage={activePage} onChangePage={setActivePage}>
+    <AppLayout navItems={navItems} activePage={activePage} onChangePage={setActivePage} loggedUser={loggedUser} onLogout={handleLogout}>
       <div className="api-status-bar api-status-bar--with-user">
         <span className={apiStatus.includes('Conectado') || apiStatus.includes('salvo') || apiStatus.includes('gerada') ? 'api-dot api-dot--ok' : 'api-dot'}></span>
         <span>{apiStatus}{isSaving ? ' | Salvando...' : ''}</span>
-        <strong>{loggedUser.name} | {loggedUser.badge}</strong>
-        <button className="mini-link" type="button" onClick={handleLogout}>Sair</button>
       </div>
       {page}
     </AppLayout>

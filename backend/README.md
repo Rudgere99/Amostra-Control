@@ -52,7 +52,9 @@ NODE_ENV=production
 npm start
 ```
 
-7. Para criar as tabelas, rode no Railway Shell:
+> Observação: o `npm start` sobe somente a API (`node server.js`). A inicialização do banco fica separada para não atrasar cada deploy.
+
+7. Para criar ou atualizar as tabelas, rode no Railway Shell quando necessário:
 
 ```bash
 npm run db:init
@@ -78,7 +80,6 @@ Exemplo de corpo para `POST /api/programacao/generate-day` (se `startHour`/`endH
 {
   "date": "2026-06-12",
   "plant": "Planta 01",
-  "shift": "1º Turno",
   "letter": "A",
   "startHour": 7,
   "endHour": 18

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { LogIn } from '../components/LocalIcons.jsx'
+import TrindadeLogo from '../components/TrindadeLogo.jsx'
 import { hasApiConfigured, loginUser } from '../services/api.js'
 
 export default function LoginPage({ onLogin }) {
@@ -49,6 +50,7 @@ export default function LoginPage({ onLogin }) {
 
   return (
     <main className="login-page">
+      <TrindadeLogo compact className="login-corner-logo" />
       <section className="login-card">
         <div className="login-brand">
           <div className="brand__mark">AC</div>

@@ -4,6 +4,10 @@ import { mapProgramacao } from '../utils/mapRows.js'
 
 const router = express.Router()
 
+function shiftByHour(hour) {
+  return hour >= 7 && hour <= 18 ? '1º Turno' : '2º Turno'
+}
+
 router.get('/', async (req, res) => {
   try {
     const { date } = req.query
@@ -32,7 +36,7 @@ router.get('/', async (req, res) => {
 
 router.post('/generate-day', async (req, res) => {
   try {
-    const { date, plant = 'Planta 01', shift = '1º Turno', letter = 'A', startHour = 0, endHour = 23 } = req.body
+    const { date, plant = 'Planta 01', letter = 'A', startHour = 0, endHour = 23 } = req.body
 
     if (!date) {
       return res.status(400).json({ error: 'Informe a data no campo date.' })
@@ -49,6 +53,7 @@ router.post('/generate-day', async (req, res) => {
 
     for (let hour = firstHour; hour <= lastHour; hour += 1) {
       const time = `${String(hour).padStart(2, '0')}:00:00`
+      const shift = shiftByHour(hour)
 
       const prog = await pool.query(`
         INSERT INTO programacao_amostragem (data_programada, hora_programada, planta, turno, letra, status)

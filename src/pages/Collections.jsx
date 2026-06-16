@@ -23,9 +23,8 @@ function normalizeHour(time) {
 }
 
 function shiftByHour(hour) {
-  if (hour >= 0 && hour <= 7) return '1º Turno'
-  if (hour >= 8 && hour <= 15) return '2º Turno'
-  return '3º Turno'
+  if (hour >= 7 && hour <= 18) return '1º Turno'
+  return '2º Turno'
 }
 
 function rowKey(date, plant, time) {
@@ -58,7 +57,7 @@ function fixedDayRows(date, plant, loggedUser) {
 function mergeFixedRows(baseRows, scheduleRows) {
   return baseRows.map((base) => {
     const saved = scheduleRows.find((item) => normalizeHour(item.time) === normalizeHour(base.time))
-    return saved ? { ...base, ...saved, remote: true } : base
+    return saved ? { ...base, ...saved, shift: base.shift, remote: true } : base
   })
 }
 
@@ -120,7 +119,7 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
       date: tableBase.date,
       plant: tableBase.plant,
       time: `${String(hour).padStart(2, '0')}:00`,
-      shift: updatedRow.shift || shiftByHour(hour),
+      shift: shiftByHour(hour),
       sampler: loggedUser?.name || updatedRow.sampler || '',
       badge: loggedUser?.badge || updatedRow.badge || '',
       letter: loggedUser?.letter || updatedRow.letter || '',

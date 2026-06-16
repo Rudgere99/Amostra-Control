@@ -595,3 +595,35 @@ tr:hover td { background: rgba(56, 189, 248, .055); }
     right: 12px;
   }
 }
+
+.trindade-logo__fallback {
+  min-width: 148px;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid rgba(56, 189, 248, .28);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, .16), rgba(245, 158, 11, .12));
+  color: var(--text);
+  box-shadow: 0 14px 24px rgba(2, 6, 23, .20);
+}
+
+.trindade-logo__fallback span {
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -.04em;
+  text-transform: uppercase;
+}
+
+.trindade-logo--compact .trindade-logo__fallback {
+  min-width: 106px;
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+.trindade-logo--compact .trindade-logo__fallback span {
+  font-size: 13px;
+}

@@ -53,7 +53,11 @@ export default function LoginPage({ onLogin }) {
       <TrindadeLogo compact className="login-corner-logo" />
       <section className="login-card">
         <div className="login-brand">
-          <TrindadeLogo />
+          <div className="brand__mark">AC</div>
+          <div>
+            <h1>Amostra<span>Control</span></h1>
+            <p>Controle Operacional de Amostragem</p>
+          </div>
         </div>
 
         <div className="login-title">

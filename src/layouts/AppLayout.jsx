@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Bell, LogIn, Menu, Search } from '../components/LocalIcons.jsx'
+import TrindadeLogo from '../components/TrindadeLogo.jsx'
 
 export default function AppLayout({ children, navItems, activePage, onChangePage, loggedUser, onLogout }) {
   const [clock, setClock] = useState('--:--:--')
@@ -19,11 +20,7 @@ export default function AppLayout({ children, navItems, activePage, onChangePage
     <div className="app-shell">
       <aside className={`sidebar ${mobileOpen ? 'sidebar--open' : ''}`}>
         <div className="brand">
-          <div className="brand__mark">AC</div>
-          <div>
-            <h1>Amostra<span>Control</span></h1>
-            <p>Operação & Amostragem</p>
-          </div>
+          <TrindadeLogo />
         </div>
 
         <nav className="sidebar__nav">

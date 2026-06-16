@@ -169,12 +169,10 @@ function App() {
   }[activePage]
 
   return (
-    <AppLayout navItems={navItems} activePage={activePage} onChangePage={setActivePage}>
+    <AppLayout navItems={navItems} activePage={activePage} onChangePage={setActivePage} loggedUser={loggedUser} onLogout={handleLogout}>
       <div className="api-status-bar api-status-bar--with-user">
         <span className={apiStatus.includes('Conectado') || apiStatus.includes('salvo') || apiStatus.includes('gerada') ? 'api-dot api-dot--ok' : 'api-dot'}></span>
         <span>{apiStatus}{isSaving ? ' | Salvando...' : ''}</span>
-        <strong>{loggedUser.name} | {loggedUser.badge}</strong>
-        <button className="mini-link" type="button" onClick={handleLogout}>Sair</button>
       </div>
       {page}
     </AppLayout>

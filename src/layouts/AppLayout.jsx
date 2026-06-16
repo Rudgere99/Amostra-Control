@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { Bell, Menu, Search } from '../components/LocalIcons.jsx'
+import { Bell, LogIn, Menu, Search } from '../components/LocalIcons.jsx'
 
-export default function AppLayout({ children, navItems, activePage, onChangePage }) {
+export default function AppLayout({ children, navItems, activePage, onChangePage, loggedUser, onLogout }) {
   const [clock, setClock] = useState('--:--:--')
   const [date, setDate] = useState('--/--/----')
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -45,6 +45,17 @@ export default function AppLayout({ children, navItems, activePage, onChangePage
             )
           })}
         </nav>
+
+        <div className="sidebar-user">
+          <div>
+            <span>Usuário logado</span>
+            <strong>{loggedUser?.name || 'Operador'}</strong>
+            <small>{loggedUser?.badge || 'Sem matrícula'}</small>
+          </div>
+          <button className="sidebar-logout" type="button" onClick={onLogout}>
+            <LogIn size={16} /> Sair
+          </button>
+        </div>
 
         <div className="sidebar__footer">
           <span>MonPlant Style</span>

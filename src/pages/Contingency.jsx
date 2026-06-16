@@ -22,9 +22,8 @@ function normalizeTime(time) {
 function shiftByHour(time) {
   const hour = toHourNumber(time)
   if (hour === null) return ''
-  if (hour >= 0 && hour <= 7) return '1º Turno'
-  if (hour >= 8 && hour <= 15) return '2º Turno'
-  return '3º Turno'
+  if (hour >= 7 && hour <= 18) return '1º Turno'
+  return '2º Turno'
 }
 
 function draftFromRow(row, loggedUser) {
@@ -32,7 +31,7 @@ function draftFromRow(row, loggedUser) {
     ...row,
     date: normalizeDate(row.date) || today(),
     time: normalizeTime(row.time),
-    shift: row.shift || shiftByHour(row.time),
+    shift: shiftByHour(row.time) || row.shift || '',
     status: row.status || 'pendente',
     sampler: row.sampler || loggedUser?.name || '',
     badge: row.badge || loggedUser?.badge || '',
@@ -132,7 +131,7 @@ export default function Contingency({ schedule = [], updateCollection, reloadCol
       ...row,
       ...draft,
       time: hour === null ? draft.time : `${String(hour).padStart(2, '0')}:00`,
-      shift: draft.shift || shiftByHour(draft.time),
+      shift: shiftByHour(draft.time) || draft.shift,
       fine: Boolean(draft.fineNpo || draft.fineHtt),
       remote: row.remote
     }

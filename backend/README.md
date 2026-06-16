@@ -80,7 +80,6 @@ Exemplo de corpo para `POST /api/programacao/generate-day` (se `startHour`/`endH
 {
   "date": "2026-06-12",
   "plant": "Planta 01",
-  "shift": "1º Turno",
   "letter": "A",
   "startHour": 7,
   "endHour": 18

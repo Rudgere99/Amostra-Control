@@ -26,6 +26,20 @@ const navItems = [
   { id: 'settings', label: 'Configurações', icon: Settings }
 ]
 
+const samplerRestrictedPages = ['contingency', 'users', 'settings']
+
+function normalizeProfile(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function isSamplerUser(user) {
+  return normalizeProfile(user?.profile || user?.perfil || user?.type || user?.tipo) === 'amostrador'
+}
+
 function normalizeRemoteRows(rows) {
   return rows.map((row) => ({ ...row, remote: true }))
 }
@@ -50,6 +64,12 @@ function App() {
 
   const localStats = useMemo(() => buildStats(schedule), [schedule])
   const stats = dashboardStats || localStats
+  const samplerUser = isSamplerUser(loggedUser)
+  const visibleNavItems = useMemo(
+    () => navItems.filter((item) => !samplerUser || !samplerRestrictedPages.includes(item.id)),
+    [samplerUser]
+  )
+  const visibleActivePage = samplerUser && samplerRestrictedPages.includes(activePage) ? 'dashboard' : activePage
 
 
   async function loadDashboardStats(filters = {}) {
@@ -89,6 +109,12 @@ function App() {
       loadDashboardStats()
     }
   }, [loggedUser])
+
+  useEffect(() => {
+    if (samplerUser && samplerRestrictedPages.includes(activePage)) {
+      setActivePage('dashboard')
+    }
+  }, [activePage, samplerUser])
 
   async function updateCollection(updatedRow) {
     setIsSaving(true)
@@ -166,10 +192,10 @@ function App() {
     reports: <Reports schedule={schedule} stats={stats} />,
     users: <UsersPage />,
     settings: <SettingsPage />
-  }[activePage]
+  }[visibleActivePage]
 
   return (
-    <AppLayout navItems={navItems} activePage={activePage} onChangePage={setActivePage} loggedUser={loggedUser} onLogout={handleLogout}>
+    <AppLayout navItems={visibleNavItems} activePage={visibleActivePage} onChangePage={setActivePage} loggedUser={loggedUser} onLogout={handleLogout}>
       <div className="api-status-bar api-status-bar--with-user">
         <span className={apiStatus.includes('Conectado') || apiStatus.includes('salvo') || apiStatus.includes('gerada') ? 'api-dot api-dot--ok' : 'api-dot'}></span>
         <span>{apiStatus}{isSaving ? ' | Salvando...' : ''}</span>

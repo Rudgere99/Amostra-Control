@@ -7,6 +7,7 @@ export default function LoginPage({ onLogin }) {
   const [form, setForm] = useState({ badge: '', name: '' })
   const [status, setStatus] = useState(hasApiConfigured() ? 'Informe seu cadastro para acessar o sistema.' : 'API não configurada. Login local liberado para teste.')
   const [loading, setLoading] = useState(false)
+  const [pendingUser, setPendingUser] = useState(null)
 
   function setField(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -38,14 +39,19 @@ export default function LoginPage({ onLogin }) {
         }
       }
 
-      localStorage.setItem('amostra-control-user', JSON.stringify(user))
-      onLogin(user)
+      setPendingUser(user)
+      setStatus('Confirme a ciência para concluir o acesso ao sistema.')
     } catch (error) {
       console.error(error)
       setStatus(`Erro no login: ${error.message}`)
     } finally {
       setLoading(false)
     }
+  }
+
+  function confirmAwareness() {
+    localStorage.setItem('amostra-control-user', JSON.stringify(pendingUser))
+    onLogin(pendingUser)
   }
 
   return (
@@ -96,6 +102,31 @@ export default function LoginPage({ onLogin }) {
           {status}
         </div>
       </section>
+
+      {pendingUser ? (
+        <div className="login-awareness-backdrop" role="dialog" aria-modal="true" aria-labelledby="login-awareness-title">
+          <section className="login-awareness-card">
+            <span className="eyebrow">Confirmação obrigatória</span>
+            <h2 id="login-awareness-title">Declaração de ciência</h2>
+
+            <div className="login-awareness-text">
+              <p>
+                Eu, <strong>{pendingUser.name || 'Usuário'}</strong> declaro estar ciente da necessidade de realizar as coletas de amostras nos horários estabelecidos, conforme procedimento operacional vigente.
+              </p>
+              <p>
+                Comprometo-me a executar as coletas de forma adequada, garantindo a veracidade e a precisão das informações registradas, bem como a comunicar qualquer intercorrência que possa impactar a realização das amostragens.
+              </p>
+              <p>
+                Reconheço a importância dessas atividades para o controle de qualidade e para a confiabilidade dos dados utilizados nos processos operacionais da empresa.
+              </p>
+            </div>
+
+            <button className="btn btn--orange login-button" type="button" onClick={confirmAwareness}>
+              Estou ciente
+            </button>
+          </section>
+        </div>
+      ) : null}
     </main>
   )
 }

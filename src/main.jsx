@@ -20,11 +20,20 @@ const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: Home },
   { id: 'collections', label: 'Coletas', icon: ClipboardCheck },
   { id: 'history', label: 'Histórico', icon: CalendarClock },
-  { id: 'contingency', label: 'Contingência', icon: AlertTriangle },
+  { id: 'contingency', label: 'Contingência', icon: AlertTriangle, blockedProfiles: ['amostrador'] },
   { id: 'reports', label: 'Relatórios', icon: FileText },
-  { id: 'users', label: 'Usuários', icon: Users },
-  { id: 'settings', label: 'Configurações', icon: Settings }
+  { id: 'users', label: 'Usuários', icon: Users, blockedProfiles: ['amostrador'] },
+  { id: 'settings', label: 'Configurações', icon: Settings, blockedProfiles: ['amostrador'] }
 ]
+
+function isPageAllowedForUser(item, user) {
+  const profile = String(user?.profile || '').trim().toLowerCase()
+  return !item?.blockedProfiles?.includes(profile)
+}
+
+function getAllowedNavItems(user) {
+  return navItems.filter((item) => isPageAllowedForUser(item, user))
+}
 
 function normalizeRemoteRows(rows) {
   return rows.map((row) => ({ ...row, remote: true }))
@@ -50,6 +59,7 @@ function App() {
 
   const localStats = useMemo(() => buildStats(schedule), [schedule])
   const stats = dashboardStats || localStats
+  const allowedNavItems = useMemo(() => getAllowedNavItems(loggedUser), [loggedUser])
 
 
   async function loadDashboardStats(filters = {}) {
@@ -152,10 +162,17 @@ function App() {
     setActivePage('dashboard')
   }
 
+  useEffect(() => {
+    if (loggedUser && !allowedNavItems.some((item) => item.id === activePage)) {
+      setActivePage('dashboard')
+    }
+  }, [activePage, allowedNavItems, loggedUser])
+
   if (!loggedUser) {
     return <LoginPage onLogin={setLoggedUser} />
   }
 
+  const currentPage = allowedNavItems.some((item) => item.id === activePage) ? activePage : 'dashboard'
   const commonProps = { schedule, stats, updateCollection, alertVisible, setAlertVisible, apiStatus, isSaving, generateFullDay, reloadCollections: loadCollections, loggedUser }
 
   const page = {
@@ -166,10 +183,10 @@ function App() {
     reports: <Reports schedule={schedule} stats={stats} />,
     users: <UsersPage />,
     settings: <SettingsPage />
-  }[activePage]
+  }[currentPage]
 
   return (
-    <AppLayout navItems={navItems} activePage={activePage} onChangePage={setActivePage} loggedUser={loggedUser} onLogout={handleLogout}>
+    <AppLayout navItems={allowedNavItems} activePage={currentPage} onChangePage={setActivePage} loggedUser={loggedUser} onLogout={handleLogout}>
       <div className="api-status-bar api-status-bar--with-user">
         <span className={apiStatus.includes('Conectado') || apiStatus.includes('salvo') || apiStatus.includes('gerada') ? 'api-dot api-dot--ok' : 'api-dot'}></span>
         <span>{apiStatus}{isSaving ? ' | Salvando...' : ''}</span>

@@ -627,3 +627,45 @@ tr:hover td { background: rgba(56, 189, 248, .055); }
 .trindade-logo--compact .trindade-logo__fallback span {
   font-size: 13px;
 }
+
+.login-awareness-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(2, 6, 23, .76);
+  backdrop-filter: blur(10px);
+}
+
+.login-awareness-card {
+  width: min(620px, 100%);
+  background: linear-gradient(160deg, rgba(15, 23, 42, .98), rgba(30, 41, 59, .94));
+  border: 1px solid var(--border-soft);
+  border-radius: 24px;
+  box-shadow: 0 32px 120px rgba(2, 6, 23, .70);
+  padding: 28px;
+}
+
+.login-awareness-card h2 {
+  margin: 6px 0 18px;
+  font-size: 28px;
+  letter-spacing: -.05em;
+}
+
+.login-awareness-text {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 22px;
+  color: #dbeafe;
+  line-height: 1.55;
+}
+
+.login-awareness-text p {
+  margin: 0;
+}
+
+.login-awareness-text strong {
+  color: #fff;
+}

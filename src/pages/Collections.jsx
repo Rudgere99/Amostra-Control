@@ -7,13 +7,90 @@ import SampleBadge from '../components/SampleBadge.jsx'
 import { exportScheduleCsv } from '../utils/exportCsv.js'
 import { formatClockTime, formatHourRange, toHourNumber } from '../utils/time.js'
 
+function formatLocalDate(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function today() {
-  return new Date().toISOString().slice(0, 10)
+  return formatLocalDate(new Date())
 }
 
 function normalizeDate(value) {
   if (!value) return ''
   return String(value).slice(0, 10)
+}
+
+function createLocalDate(date) {
+  const [year, month, day] = String(date || '').split('-').map(Number)
+
+  if (!year || !month || !day) return null
+
+  return new Date(year, month - 1, day, 0, 0, 0, 0)
+}
+
+function getLaunchDateLock(date) {
+  if (!date) {
+    return {
+      locked: true,
+      message: 'Informe uma data para realizar o lançamento.'
+    }
+  }
+
+  const now = new Date()
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+  const selectedDate = createLocalDate(date)
+
+  if (!selectedDate) {
+    return {
+      locked: true,
+      message: 'Data de lançamento inválida.'
+    }
+  }
+
+  const yesterday = new Date(todayDate)
+  yesterday.setDate(todayDate.getDate() - 1)
+
+  const tomorrow = new Date(todayDate)
+  tomorrow.setDate(todayDate.getDate() + 1)
+
+  const yesterdayLimit = new Date(todayDate)
+  yesterdayLimit.setHours(1, 0, 0, 0)
+
+  if (selectedDate >= tomorrow) {
+    return {
+      locked: true,
+      message: 'Não é permitido lançar coleta para data futura.'
+    }
+  }
+
+  if (selectedDate.getTime() === todayDate.getTime()) {
+    return {
+      locked: false,
+      message: ''
+    }
+  }
+
+  if (selectedDate.getTime() === yesterday.getTime()) {
+    if (now <= yesterdayLimit) {
+      return {
+        locked: false,
+        message: ''
+      }
+    }
+
+    return {
+      locked: true,
+      message: 'O lançamento do dia anterior só é permitido até 01:00 da manhã.'
+    }
+  }
+
+  return {
+    locked: true,
+    message: 'Não é permitido lançar coleta para datas anteriores ao dia de ontem.'
+  }
 }
 
 function normalizeHour(time) {
@@ -68,6 +145,8 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
   })
   const [selected, setSelected] = useState(null)
 
+  const launchDateLock = useMemo(() => getLaunchDateLock(tableBase.date), [tableBase.date])
+
   function setBaseField(field, value) {
     setTableBase((current) => ({ ...current, [field]: value }))
     setSelected(null)
@@ -101,6 +180,11 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
   }, [rows])
 
   function openRegister(row) {
+    if (launchDateLock.locked) {
+      window.alert(launchDateLock.message)
+      return
+    }
+
     setSelected({
       ...row,
       date: tableBase.date,
@@ -112,6 +196,13 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
   }
 
   function saveFromModal(updatedRow) {
+    const validation = getLaunchDateLock(tableBase.date)
+
+    if (validation.locked) {
+      window.alert(validation.message)
+      return
+    }
+
     const hour = toHourNumber(updatedRow.time) ?? 0
 
     updateCollection?.({
@@ -165,6 +256,15 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
           </select>
         </label>
       </div>
+
+      {launchDateLock.locked && (
+        <div className="generation-card generation-card--fixed" style={{ borderColor: '#f59e0b', background: '#fff7ed' }}>
+          <div>
+            <h3 style={{ color: '#9a3412' }}>Lançamento bloqueado para esta data</h3>
+            <p style={{ color: '#9a3412' }}>{launchDateLock.message}</p>
+          </div>
+        </div>
+      )}
 
       <div className="collection-summary-grid">
         <div><span>Total de faixas</span><strong>{summary.total}</strong></div>
@@ -220,8 +320,18 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
                   <td>{formatClockTime(row.realTime)}</td>
                   <td className="notes-preview">{row.notes || '-'}</td>
                   <td>
-                    <button className="table-action table-action--primary" type="button" onClick={() => openRegister(row)} disabled={isSaving}>
-                      {row.status === 'coletado' || row.status === 'parcial' || row.status === 'nao_realizado' ? 'Editar' : 'Registrar'}
+                    <button
+                      className="table-action table-action--primary"
+                      type="button"
+                      onClick={() => openRegister(row)}
+                      disabled={isSaving || launchDateLock.locked}
+                      title={launchDateLock.locked ? launchDateLock.message : ''}
+                    >
+                      {launchDateLock.locked
+                        ? 'Bloqueado'
+                        : row.status === 'coletado' || row.status === 'parcial' || row.status === 'nao_realizado'
+                          ? 'Editar'
+                          : 'Registrar'}
                     </button>
                   </td>
                 </tr>

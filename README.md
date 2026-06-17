@@ -9,6 +9,7 @@ Sistema web para controle operacional de coletas horarias de amostras. O projeto
 - Tela de coletas com grade fixa de 24 faixas horarias, de `00-01` ate `23-00`, por data e planta.
 - Lancamento e edicao de coleta com amostrador, cadastro, letra, hora real, pilhas SF1/HTT1/NPO1, fino agregado NPO/HTT, CCCO, status e observacoes.
 - Bloqueio de lancamento por data: nao permite data futura, permite o dia atual e permite o dia anterior somente ate `01:00` da manha.
+- Bloqueio de lancamento por faixa horaria no front-end: cada faixa so libera 10 minutos antes do horario de fechamento. Exemplo: `03-04` refere-se ao fechamento das `04:00`, entao o botao libera a partir de `03:50`.
 - Historico, contingencia e relatorios com filtros por data/planta e exportacao CSV.
 - Geracao de programacao diaria pela API.
 - Fallback para dados locais quando `VITE_API_URL` nao esta configurada.
@@ -180,5 +181,6 @@ npm run db:init
 
 - A programacao trabalha com 24 faixas fixas por dia e planta.
 - A faixa `03-04` representa a coleta referente ao fechamento das `04:00`.
+- O bloqueio de 10 minutos antes do fechamento e aplicado no front-end, desabilitando o lancamento ate a janela abrir.
 - Os status e indicadores do dashboard sao calculados a partir dos lancamentos salvos quando a API esta configurada.
 - O controle de fino agregado separa registros de NPO e HTT para facilitar relatorios e rastreabilidade.

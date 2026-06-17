@@ -93,6 +93,35 @@ function getLaunchDateLock(date) {
   }
 }
 
+function getLaunchTimeLock(date, time, now = new Date()) {
+  const selectedDate = createLocalDate(date)
+  const hour = toHourNumber(time)
+
+  if (!selectedDate || hour === null) {
+    return {
+      locked: true,
+      message: 'Faixa horária inválida para lançamento.'
+    }
+  }
+
+  const releaseTime = new Date(selectedDate)
+  releaseTime.setHours(hour + 1, 0, 0, 0)
+
+  if (now < releaseTime) {
+    const releaseClock = releaseTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    return {
+      locked: true,
+      message: `Lançamento liberado somente a partir das ${releaseClock}.`,
+      releaseClock
+    }
+  }
+
+  return {
+    locked: false,
+    message: ''
+  }
+}
+
 function normalizeHour(time) {
   const hour = toHourNumber(time)
   if (hour === null) return null
@@ -144,8 +173,14 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
     plant: 'Planta 01'
   })
   const [selected, setSelected] = useState(null)
+  const [clockTick, setClockTick] = useState(() => new Date())
 
   const launchDateLock = useMemo(() => getLaunchDateLock(tableBase.date), [tableBase.date])
+
+  useEffect(() => {
+    const timer = setInterval(() => setClockTick(new Date()), 30000)
+    return () => clearInterval(timer)
+  }, [])
 
   function setBaseField(field, value) {
     setTableBase((current) => ({ ...current, [field]: value }))
@@ -179,9 +214,16 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
     }
   }, [rows])
 
+  function getRowLaunchLock(row) {
+    if (launchDateLock.locked) return launchDateLock
+    return getLaunchTimeLock(tableBase.date, row.time, clockTick)
+  }
+
   function openRegister(row) {
-    if (launchDateLock.locked) {
-      window.alert(launchDateLock.message)
+    const rowLaunchLock = getRowLaunchLock(row)
+
+    if (rowLaunchLock.locked) {
+      window.alert(rowLaunchLock.message)
       return
     }
 
@@ -200,6 +242,13 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
 
     if (validation.locked) {
       window.alert(validation.message)
+      return
+    }
+
+    const rowLaunchLock = getLaunchTimeLock(tableBase.date, updatedRow.time)
+
+    if (rowLaunchLock.locked) {
+      window.alert(rowLaunchLock.message)
       return
     }
 
@@ -303,39 +352,42 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={rowKey(row.date, row.plant, row.time)}>
-                  <td className="sticky-cell"><strong>{formatHourRange(row.time)}</strong></td>
-                  <td>{row.shift || '-'}</td>
-                  <td>{row.letter || loggedUser?.letter || '-'}</td>
-                  <td><StatusBadge status={row.status || 'pendente'} /></td>
-                  <td>{row.sampler || loggedUser?.name || '-'}</td>
-                  <td>{row.badge || loggedUser?.badge || '-'}</td>
-                  <td><SampleBadge ok={row.sf1} /></td>
-                  <td><SampleBadge ok={row.htt1} /></td>
-                  <td><SampleBadge ok={row.npo1} /></td>
-                  <td>{row.fineNpo ? 'Sim' : 'Não'}</td>
-                  <td>{row.fineHtt ? 'Sim' : 'Não'}</td>
-                  <td>{row.ccco ? 'Sim' : 'Não'}</td>
-                  <td>{formatClockTime(row.realTime)}</td>
-                  <td className="notes-preview">{row.notes || '-'}</td>
-                  <td>
-                    <button
-                      className="table-action table-action--primary"
-                      type="button"
-                      onClick={() => openRegister(row)}
-                      disabled={isSaving || launchDateLock.locked}
-                      title={launchDateLock.locked ? launchDateLock.message : ''}
-                    >
-                      {launchDateLock.locked
-                        ? 'Bloqueado'
-                        : row.status === 'coletado' || row.status === 'parcial' || row.status === 'nao_realizado'
-                          ? 'Editar'
-                          : 'Registrar'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {rows.map((row) => {
+                const rowLaunchLock = getRowLaunchLock(row)
+                const hasSavedLaunch = row.status === 'coletado' || row.status === 'parcial' || row.status === 'nao_realizado'
+
+                return (
+                  <tr key={rowKey(row.date, row.plant, row.time)}>
+                    <td className="sticky-cell"><strong>{formatHourRange(row.time)}</strong></td>
+                    <td>{row.shift || '-'}</td>
+                    <td>{row.letter || loggedUser?.letter || '-'}</td>
+                    <td><StatusBadge status={row.status || 'pendente'} /></td>
+                    <td>{row.sampler || loggedUser?.name || '-'}</td>
+                    <td>{row.badge || loggedUser?.badge || '-'}</td>
+                    <td><SampleBadge ok={row.sf1} /></td>
+                    <td><SampleBadge ok={row.htt1} /></td>
+                    <td><SampleBadge ok={row.npo1} /></td>
+                    <td>{row.fineNpo ? 'Sim' : 'Não'}</td>
+                    <td>{row.fineHtt ? 'Sim' : 'Não'}</td>
+                    <td>{row.ccco ? 'Sim' : 'Não'}</td>
+                    <td>{formatClockTime(row.realTime)}</td>
+                    <td className="notes-preview">{row.notes || '-'}</td>
+                    <td>
+                      <button
+                        className="table-action table-action--primary"
+                        type="button"
+                        onClick={() => openRegister(row)}
+                        disabled={isSaving || rowLaunchLock.locked}
+                        title={rowLaunchLock.locked ? rowLaunchLock.message : ''}
+                      >
+                        {rowLaunchLock.locked
+                          ? rowLaunchLock.releaseClock ? `Libera ${rowLaunchLock.releaseClock}` : 'Bloqueado'
+                          : hasSavedLaunch ? 'Editar' : 'Registrar'}
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

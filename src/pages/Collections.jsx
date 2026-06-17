@@ -105,7 +105,7 @@ function getLaunchTimeLock(date, time, now = new Date()) {
   }
 
   const releaseTime = new Date(selectedDate)
-  releaseTime.setHours(hour, 50, 0, 0)
+  releaseTime.setHours(hour + 1, 0, 0, 0)
 
   if (now < releaseTime) {
     const releaseClock = releaseTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })

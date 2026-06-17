@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { AlertTriangle, CalendarClock, ClipboardCheck, FileText, Home, Settings, Users } from './components/LocalIcons.jsx'
+import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardCheck, FileText, Home, Settings, Users } from './components/LocalIcons.jsx'
 import AppLayout from './layouts/AppLayout.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Collections from './pages/Collections.jsx'
 import History from './pages/History.jsx'
 import Contingency from './pages/Contingency.jsx'
 import Reports from './pages/Reports.jsx'
+import BestPractices from './pages/BestPractices.jsx'
 import UsersPage from './pages/UsersPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -22,6 +23,7 @@ const navItems = [
   { id: 'history', label: 'Histórico', icon: CalendarClock },
   { id: 'contingency', label: 'Contingência', icon: AlertTriangle },
   { id: 'reports', label: 'Relatórios', icon: FileText },
+  { id: 'best-practices', label: 'Boas práticas', icon: CheckCircle2 },
   { id: 'users', label: 'Usuários', icon: Users },
   { id: 'settings', label: 'Configurações', icon: Settings }
 ]
@@ -164,6 +166,7 @@ function App() {
     history: <History schedule={schedule} />,
     contingency: <Contingency {...commonProps} />,
     reports: <Reports schedule={schedule} stats={stats} />,
+    'best-practices': <BestPractices />,
     users: <UsersPage />,
     settings: <SettingsPage />
   }[activePage]

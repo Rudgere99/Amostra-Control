@@ -3,15 +3,7 @@ import { AlertTriangle, RefreshCcw, Save } from '../components/LocalIcons.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { formatClockTime, formatHourRange, toHourNumber } from '../utils/time.js'
-
-function today() {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function normalizeDate(value) {
-  if (!value) return ''
-  return String(value).slice(0, 10)
-}
+import { normalizeDate, today } from '../utils/date.js'
 
 function normalizeTime(time) {
   const hour = toHourNumber(time)

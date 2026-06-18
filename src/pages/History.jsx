@@ -2,18 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react'
 import PageHeader from '../components/PageHeader.jsx'
 import { fetchCollections, hasApiConfigured } from '../services/api.js'
 import { formatHourRange } from '../utils/time.js'
-
-function today() {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function normalizeDate(value) {
-  if (!value) return ''
-  return String(value).slice(0, 10)
-}
+import { formatShortDate, normalizeDate, today } from '../utils/date.js'
 
 function normalizeLogDate(item) {
-  return normalizeDate(item.updatedAt || item.createdAt || item.date)
+  return normalizeDate(item.date)
 }
 
 function statusLabel(status) {
@@ -162,7 +154,7 @@ export default function History({ schedule = [] }) {
             <tbody>
               {logs.map((item) => (
                 <tr key={item.id}>
-                  <td>{normalizeLogDate(item) || '-'}</td>
+                  <td>{formatShortDate(item.date) || '-'}</td>
                   <td>{formatHourRange(item.time)}</td>
                   <td>{item.plant || '-'}</td>
                   <td>{item.user || '-'}</td>

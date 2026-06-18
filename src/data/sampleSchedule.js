@@ -1,6 +1,5 @@
-function today() {
-  return new Date().toISOString().slice(0, 10)
-}
+import { today } from '../utils/date.js'
+
 
 function shiftByHour(hour) {
   if (hour >= 7 && hour <= 18) return '1º Turno'

@@ -4,15 +4,7 @@ import PageHeader from '../components/PageHeader.jsx'
 import StatCard from '../components/StatCard.jsx'
 import { exportScheduleCsv } from '../utils/exportCsv.js'
 import { formatHourRange } from '../utils/time.js'
-
-function today() {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function normalizeDate(value) {
-  if (!value) return ''
-  return String(value).slice(0, 10)
-}
+import { formatShortDate, normalizeDate, today } from '../utils/date.js'
 
 function matchesFilter(value, filterValue, allValue) {
   if (!filterValue || filterValue === allValue) return true
@@ -131,7 +123,7 @@ export default function Reports({ schedule = [], stats = {} }) {
             <tbody>
               {contaminatedRows.map((item) => (
                 <tr key={item.id}>
-                  <td>{normalizeDate(item.date) || '-'}</td>
+                  <td>{formatShortDate(item.date) || '-'}</td>
                   <td>{formatHourRange(item.time)}</td>
                   <td>{item.plant || '-'}</td>
                   <td>{item.sampler || '-'}</td>

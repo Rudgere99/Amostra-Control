@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { nowTime } from '../utils/status.js'
 import { formatClockTime, formatHourRange } from '../utils/time.js'
+import { formatShortDate } from '../utils/date.js'
 
 export default function CollectionModal({ row, loggedUser, onClose, onSave }) {
   const [form, setForm] = useState({
@@ -75,7 +76,7 @@ export default function CollectionModal({ row, loggedUser, onClose, onSave }) {
           <label>Matrícula<input value={badge} readOnly /></label>
           <label>Letra<input value={letter || '-'} readOnly /></label>
           <label>Planta<input value={row.plant || '-'} readOnly /></label>
-          <label>Data<input value={row.date} readOnly /></label>
+          <label>Data<input value={formatShortDate(row.date)} readOnly /></label>
           <label>Hora programada<input value={formatHourRange(row.time)} readOnly /></label>
           <label>Hora real<input value={formatClockTime(form.realTime)} readOnly /></label>
           <label>Status<select value={form.status} onChange={(e) => setField('status', e.target.value)}><option value="coletado">Realizada</option><option value="parcial">Parcial</option><option value="nao_realizado">Não realizada</option></select></label>

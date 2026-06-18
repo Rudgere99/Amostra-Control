@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from 'react'
 import { Bell, LogIn, Menu, Search } from '../components/LocalIcons.jsx'
 import TrindadeLogo from '../components/TrindadeLogo.jsx'
+import { formatShortDate, today } from '../utils/date.js'
 
 export default function AppLayout({ children, navItems, activePage, onChangePage, loggedUser, onLogout }) {
   const [clock, setClock] = useState('--:--:--')
-  const [date, setDate] = useState('--/--/----')
+  const [date, setDate] = useState('--/--/--')
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date()
       setClock(now.toLocaleTimeString('pt-BR'))
-      setDate(now.toLocaleDateString('pt-BR'))
+      setDate(formatShortDate(today()))
     }, 1000)
     return () => clearInterval(timer)
   }, [])

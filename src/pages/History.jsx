@@ -1,8 +1,38 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import PageHeader from '../components/PageHeader.jsx'
 import { fetchCollections, hasApiConfigured } from '../services/api.js'
-import { formatHourRange } from '../utils/time.js'
-import { formatShortDate, normalizeDate, today } from '../utils/date.js'
+import { formatClockTime, formatHourRange, toHourNumber } from '../utils/time.js'
+import { formatLocalDate, formatShortDate, normalizeDate, today } from '../utils/date.js'
+
+function addDays(date, days) {
+  const [year, month, day] = String(date || '').split('-').map(Number)
+  if (!year || !month || !day) return ''
+
+  const nextDate = new Date(year, month - 1, day, 0, 0, 0, 0)
+  nextDate.setDate(nextDate.getDate() + days)
+  return formatLocalDate(nextDate)
+}
+
+function shiftFromTime(time) {
+  const hour = toHourNumber(time)
+  if (hour === null) return ''
+  return hour >= 7 && hour <= 18 ? 'Turno 01' : 'Turno 02'
+}
+
+function relativeDateFromTime(date, time) {
+  const normalizedDate = normalizeDate(date)
+  const hour = toHourNumber(time)
+
+  if (!normalizedDate || hour === null) return normalizedDate
+  if (hour >= 0 && hour <= 6) return addDays(normalizedDate, -1)
+  return normalizedDate
+}
+
+function operationalHourOrder(time) {
+  const hour = toHourNumber(time)
+  if (hour === null) return 99
+  return hour <= 6 ? hour + 24 : hour
+}
 
 function normalizeLogDate(item) {
   return normalizeDate(item.date)
@@ -21,21 +51,23 @@ function statusLabel(status) {
 
 function makeLogFromCollection(item) {
   const hasFine = item.fineNpo || item.fineHtt
-  const action = item.status === 'coletado' ? 'Coleta realizada' : 'Lançamento atualizado'
   const fineText = hasFine
     ? `Fino agregado: ${item.fineNpo ? 'NPO' : ''}${item.fineNpo && item.fineHtt ? ' e ' : ''}${item.fineHtt ? 'HTT' : ''}`
     : 'Sem fino agregado informado'
+  const shift = shiftFromTime(item.time)
 
   return {
     id: `log-${item.id}`,
     date: normalizeLogDate(item),
+    relativeDate: relativeDateFromTime(item.date, item.time),
     time: item.time,
+    realTime: item.realTime,
+    shift,
     plant: item.plant,
     sampler: item.sampler,
     badge: item.badge,
     status: item.status,
     user: item.sampler || item.user || item.updatedBy || item.createdBy || '-',
-    action,
     details: `${fineText}${item.ccco ? ' | CCCO informado' : ' | CCCO não informado'}${item.notes ? ` | Obs.: ${item.notes}` : ''}`
   }
 }
@@ -44,6 +76,7 @@ export default function History({ schedule = [] }) {
   const [filters, setFilters] = useState({
     date: today(),
     plant: 'Todas',
+    shift: 'Todos',
     status: 'coletado'
   })
   const [remoteRows, setRemoteRows] = useState([])
@@ -64,12 +97,18 @@ export default function History({ schedule = [] }) {
       setMessage('')
 
       try {
-        const query = {}
-        if (filters.date) query.date = filters.date
-        if (filters.plant && filters.plant !== 'Todas') query.plant = filters.plant
-        query.status = 'coletado'
+        const baseQuery = {}
+        if (filters.plant && filters.plant !== 'Todas') baseQuery.plant = filters.plant
+        baseQuery.status = 'coletado'
 
-        const data = await fetchCollections(query)
+        const datesToLoad = filters.date ? [filters.date, addDays(filters.date, 1)].filter(Boolean) : [null]
+        const responses = await Promise.all(datesToLoad.map((date) => {
+          const query = { ...baseQuery }
+          if (date) query.date = date
+          return fetchCollections(query)
+        }))
+        const rowsById = new Map(responses.flatMap((data) => Array.isArray(data) ? data : []).map((row) => [row.id, row]))
+        const data = Array.from(rowsById.values())
         if (!ignore) {
           setRemoteRows(Array.isArray(data) ? data : [])
           setMessage('')
@@ -94,8 +133,15 @@ export default function History({ schedule = [] }) {
     return sourceRows
       .filter((item) => (item.remote || item.id) && item.status === 'coletado')
       .map(makeLogFromCollection)
-      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.time || '').localeCompare(String(a.time || '')))
-  }, [sourceRows])
+      .filter((item) => !filters.date || item.relativeDate === filters.date)
+      .filter((item) => filters.plant === 'Todas' || String(item.plant || '') === filters.plant)
+      .filter((item) => filters.shift === 'Todos' || item.shift === filters.shift)
+      .sort((a, b) => (
+        String(b.relativeDate || '').localeCompare(String(a.relativeDate || '')) ||
+        operationalHourOrder(a.time) - operationalHourOrder(b.time) ||
+        String(a.plant || '').localeCompare(String(b.plant || ''))
+      ))
+  }, [sourceRows, filters])
 
   return (
     <div className="page-stack">
@@ -125,6 +171,15 @@ export default function History({ schedule = [] }) {
           </select>
         </label>
 
+        <label>
+          Turno
+          <select value={filters.shift} onChange={(e) => setFilters((current) => ({ ...current, shift: e.target.value }))}>
+            <option>Todos</option>
+            <option>Turno 01</option>
+            <option>Turno 02</option>
+          </select>
+        </label>
+
       </div>
 
       {message && <div className="api-status-bar"><span className="api-dot"></span><span>{message}</span></div>}
@@ -142,32 +197,34 @@ export default function History({ schedule = [] }) {
             <thead>
               <tr>
                 <th>Data</th>
+                <th>Hora coleta</th>
+                <th>Turno</th>
                 <th>Faixa</th>
                 <th>Planta</th>
                 <th>Usuário</th>
                 <th>Matrícula</th>
                 <th>Status</th>
-                <th>Ação</th>
                 <th>Detalhes</th>
               </tr>
             </thead>
             <tbody>
               {logs.map((item) => (
                 <tr key={item.id}>
-                  <td>{formatShortDate(item.date) || '-'}</td>
+                  <td>{formatShortDate(item.relativeDate) || '-'}</td>
+                  <td>{formatClockTime(item.realTime)}</td>
+                  <td>{item.shift || '-'}</td>
                   <td>{formatHourRange(item.time)}</td>
                   <td>{item.plant || '-'}</td>
                   <td>{item.user || '-'}</td>
                   <td>{item.badge || '-'}</td>
                   <td>{statusLabel(item.status)}</td>
-                  <td>{item.action || '-'}</td>
                   <td>{item.details || '-'}</td>
                 </tr>
               ))}
 
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan="8">Nenhuma coleta realizada encontrada para os filtros selecionados.</td>
+                  <td colSpan="9">Nenhuma coleta realizada encontrada para os filtros selecionados.</td>
                 </tr>
               )}
             </tbody>

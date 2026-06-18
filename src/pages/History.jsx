@@ -49,6 +49,16 @@ function statusLabel(status) {
   return labels[status] || status || '-'
 }
 
+function collectedMaterials(item) {
+  const materials = [
+    item.sf1 ? 'SF1' : '',
+    item.htt1 ? 'HTT1' : '',
+    item.npo1 ? 'NPO1' : ''
+  ].filter(Boolean)
+
+  return materials.length ? materials.join(', ') : '-'
+}
+
 function makeLogFromCollection(item) {
   const hasFine = item.fineNpo || item.fineHtt
   const fineText = hasFine
@@ -63,6 +73,7 @@ function makeLogFromCollection(item) {
     time: item.time,
     realTime: item.realTime,
     shift,
+    materials: collectedMaterials(item),
     plant: item.plant,
     sampler: item.sampler,
     badge: item.badge,
@@ -202,7 +213,7 @@ export default function History({ schedule = [] }) {
                 <th>Faixa</th>
                 <th>Planta</th>
                 <th>Usuário</th>
-                <th>Matrícula</th>
+                <th>Materiais</th>
                 <th>Status</th>
                 <th>Detalhes</th>
               </tr>
@@ -216,7 +227,7 @@ export default function History({ schedule = [] }) {
                   <td>{formatHourRange(item.time)}</td>
                   <td>{item.plant || '-'}</td>
                   <td>{item.user || '-'}</td>
-                  <td>{item.badge || '-'}</td>
+                  <td>{item.materials || '-'}</td>
                   <td>{statusLabel(item.status)}</td>
                   <td>{item.details || '-'}</td>
                 </tr>

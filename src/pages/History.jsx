@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { Download } from '../components/LocalIcons.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import { fetchCollections, hasApiConfigured } from '../services/api.js'
 import { formatClockTime, formatHourRange, toHourNumber } from '../utils/time.js'
@@ -34,6 +35,32 @@ function operationalHourOrder(time) {
   return hour <= 6 ? hour + 24 : hour
 }
 
+function formatExportDate(value) {
+  const normalized = normalizeDate(value)
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return normalized || '-'
+
+  const [, year, month, day] = match
+  return `${day}/${month}/${year}`
+}
+
+function excelText(value) {
+  return String(value ?? '-').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+}
+
+function collectedLabel(value) {
+  return value ? 'Coletada' : 'Não coletada'
+}
+
+function yesNo(value) {
+  return value ? 'Sim' : 'Não'
+}
+
+function fineStatus(item) {
+  if (!item.fineNpo && !item.fineHtt) return 'OK - Sem fino'
+  return item.ccco ? 'OK - Comunicado' : 'Pendente - Comunicar'
+}
+
 function normalizeLogDate(item) {
   return normalizeDate(item.date)
 }
@@ -59,6 +86,41 @@ function collectedMaterials(item) {
   return materials.length ? materials.join(', ') : '-'
 }
 
+function exportHistoryExcel(logs) {
+  const headers = ['Nº', 'Data', 'Hora da amostragem', 'Turno', 'Nome amostrador', 'SF1', 'HTT1', 'NPO1', 'Fino Agregado HTT1', 'Fino Agregado NPO1', 'Contem fino agregado', 'Informado ao CCO', 'Hora da comunicação', 'Planta', 'Fino agregado']
+  const rows = logs.map((item, index) => [
+    index + 1,
+    formatExportDate(item.relativeDate),
+    formatClockTime(item.time) === '-' ? formatHourRange(item.time) : formatClockTime(item.time),
+    item.shift || '-',
+    item.user || '-',
+    collectedLabel(item.sf1),
+    collectedLabel(item.htt1),
+    collectedLabel(item.npo1),
+    yesNo(item.fineHtt),
+    yesNo(item.fineNpo),
+    yesNo(item.fineNpo || item.fineHtt),
+    yesNo(item.ccco),
+    formatClockTime(item.realTime),
+    item.plant ? `Coleta na ${item.plant}` : '-',
+    fineStatus(item)
+  ])
+
+  const tableRows = [headers, ...rows]
+    .map((row, rowIndex) => `<tr>${row.map((cell) => `<${rowIndex === 0 ? 'th' : 'td'}>${excelText(cell)}</${rowIndex === 0 ? 'th' : 'td'}>`).join('')}</tr>`)
+    .join('')
+  const html = `<!doctype html><html><head><meta charset="utf-8" /></head><body><table>${tableRows}</table></body></html>`
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'historico-coletas.xls'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
 function makeLogFromCollection(item) {
   const hasFine = item.fineNpo || item.fineHtt
   const fineText = hasFine
@@ -74,6 +136,12 @@ function makeLogFromCollection(item) {
     realTime: item.realTime,
     shift,
     materials: collectedMaterials(item),
+    sf1: item.sf1,
+    htt1: item.htt1,
+    npo1: item.npo1,
+    fineNpo: item.fineNpo,
+    fineHtt: item.fineHtt,
+    ccco: item.ccco,
     plant: item.plant,
     sampler: item.sampler,
     badge: item.badge,
@@ -160,6 +228,11 @@ export default function History({ schedule = [] }) {
         eyebrow="Consulta"
         title="Histórico de lançamentos"
         description="Consulta somente das coletas realizadas e salvas no backend por data, planta, amostrador e ocorrências de fino agregado."
+        actions={(
+          <button className="btn btn--orange" type="button" onClick={() => exportHistoryExcel(logs)} disabled={logs.length === 0}>
+            <Download size={17} /> Exportar Excel
+          </button>
+        )}
       />
 
       <div className="generation-card generation-card--fixed">

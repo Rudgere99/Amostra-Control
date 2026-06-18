@@ -208,9 +208,9 @@ export default function History({ schedule = [] }) {
             <thead>
               <tr>
                 <th>Data</th>
+                <th>Faixa</th>
                 <th>Hora coleta</th>
                 <th>Turno</th>
-                <th>Faixa</th>
                 <th>Planta</th>
                 <th>Usuário</th>
                 <th>Materiais</th>
@@ -222,9 +222,9 @@ export default function History({ schedule = [] }) {
               {logs.map((item) => (
                 <tr key={item.id}>
                   <td>{formatShortDate(item.relativeDate) || '-'}</td>
+                  <td>{formatHourRange(item.time)}</td>
                   <td>{formatClockTime(item.realTime)}</td>
                   <td>{item.shift || '-'}</td>
-                  <td>{formatHourRange(item.time)}</td>
                   <td>{item.plant || '-'}</td>
                   <td>{item.user || '-'}</td>
                   <td>{item.materials || '-'}</td>

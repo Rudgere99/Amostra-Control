@@ -3,15 +3,7 @@ import { AlertTriangle, RefreshCcw, Save } from '../components/LocalIcons.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { formatClockTime, formatHourRange, toHourNumber } from '../utils/time.js'
-
-function today() {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function normalizeDate(value) {
-  if (!value) return ''
-  return String(value).slice(0, 10)
-}
+import { normalizeDate, today } from '../utils/date.js'
 
 function normalizeTime(time) {
   const hour = toHourNumber(time)
@@ -24,6 +16,69 @@ function shiftByHour(time) {
   if (hour === null) return ''
   if (hour >= 7 && hour <= 18) return '1º Turno'
   return '2º Turno'
+}
+
+function makePendingRow(date, plant, hour) {
+  return {
+    id: `contingencia-${date}-${plant}-${hour}`,
+    date,
+    plant,
+    time: `${String(hour).padStart(2, '0')}:00`,
+    shift: shiftByHour(hour),
+    status: 'pendente',
+    sampler: '',
+    badge: '',
+    letter: '',
+    sf1: false,
+    htt1: false,
+    npo1: false,
+    fineNpo: false,
+    fineHtt: false,
+    ccco: false,
+    realTime: '',
+    notes: '',
+    remote: false
+  }
+}
+
+function slotKey(row) {
+  return `${normalizeDate(row.date)}|${row.plant}|${normalizeTime(row.time)}`
+}
+
+function buildContingencyRows(schedule, filters) {
+  const savedRowsForDateAndPlant = schedule.filter((row) => {
+    const sameDate = !filters.date || normalizeDate(row.date) === filters.date
+    const samePlant = filters.plant === 'Todas' || String(row.plant || '') === filters.plant
+    return sameDate && samePlant
+  })
+
+  const filteredSavedRows = schedule.filter((row) => {
+    const sameDate = !filters.date || normalizeDate(row.date) === filters.date
+    const samePlant = filters.plant === 'Todas' || String(row.plant || '') === filters.plant
+    const sameStatus = filters.status === 'todos' || String(row.status || 'pendente') === filters.status
+    return sameDate && samePlant && sameStatus
+  })
+
+  if (!filters.date || !['todos', 'pendente'].includes(filters.status)) {
+    return filteredSavedRows
+  }
+
+  const rowsBySlot = new Map(filteredSavedRows.map((row) => [slotKey(row), row]))
+  const occupiedSlots = new Set(savedRowsForDateAndPlant.map(slotKey))
+  const plants = filters.plant === 'Todas' ? ['Planta 01', 'Planta 02'] : [filters.plant]
+
+  plants.forEach((plant) => {
+    Array.from({ length: 24 }, (_, hour) => makePendingRow(filters.date, plant, hour)).forEach((pendingRow) => {
+      if (!occupiedSlots.has(slotKey(pendingRow))) {
+        rowsBySlot.set(slotKey(pendingRow), pendingRow)
+      }
+    })
+  })
+
+  return Array.from(rowsBySlot.values()).sort((a, b) => (
+    String(a.plant || '').localeCompare(String(b.plant || '')) ||
+    String(normalizeTime(a.time)).localeCompare(String(normalizeTime(b.time)))
+  ))
 }
 
 function draftFromRow(row, loggedUser) {
@@ -77,12 +132,7 @@ export default function Contingency({ schedule = [], updateCollection, reloadCol
   }, [filters.date, filters.plant, filters.status])
 
   const rows = useMemo(() => {
-    return schedule.filter((row) => {
-      const sameDate = !filters.date || normalizeDate(row.date) === filters.date
-      const samePlant = filters.plant === 'Todas' || String(row.plant || '') === filters.plant
-      const sameStatus = filters.status === 'todos' || String(row.status || 'pendente') === filters.status
-      return sameDate && samePlant && sameStatus
-    })
+    return buildContingencyRows(schedule, filters)
   }, [schedule, filters])
 
   useEffect(() => {
@@ -149,7 +199,7 @@ export default function Contingency({ schedule = [], updateCollection, reloadCol
       <PageHeader
         eyebrow="Modo contingência"
         title="Contingência de lançamentos"
-        description="Altere rapidamente lançamentos já registrados quando houver correção operacional, falha de rede ou necessidade de ajuste posterior das coletas de amostras."
+        description="Altere lançamentos já registrados ou inclua faixas horárias esquecidas quando houver correção operacional, falha de rede ou necessidade de ajuste posterior das coletas de amostras."
         actions={(
           <button className="btn btn--ghost" type="button" onClick={handleReload} disabled={isSaving}>
             <RefreshCcw size={17} /> Atualizar
@@ -168,7 +218,7 @@ export default function Contingency({ schedule = [], updateCollection, reloadCol
       <div className="generation-card contingency-filter">
         <div>
           <h3>Filtros de contingência</h3>
-          <p>Localize o lançamento por data, planta e status antes de alterar os campos necessários.</p>
+          <p>Localize o lançamento por data, planta e status. Em Todos ou Pendente, a tela mostra também horários ainda não lançados.</p>
         </div>
         <label>
           Data
@@ -206,7 +256,7 @@ export default function Contingency({ schedule = [], updateCollection, reloadCol
         <div className="table-card__header">
           <div>
             <h3>Editar lançamentos de coletas</h3>
-            <span>Atualize status, pilhas coletadas, hora real, CCCO e observações diretamente na tabela.</span>
+            <span>Atualize registros existentes ou salve uma faixa pendente para criar o lançamento faltante.</span>
           </div>
         </div>
 

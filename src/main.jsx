@@ -41,6 +41,13 @@ function normalizeRemoteRows(rows) {
   return rows.map((row) => ({ ...row, remote: true }))
 }
 
+function shouldCreateInsteadOfUpdate(row) {
+  if (!row?.remote) return true
+  if (typeof row.id === 'string' && row.id.startsWith('novo-')) return true
+  if (typeof row.id === 'string' && row.id.startsWith('contingencia-')) return true
+  return false
+}
+
 function getStoredUser() {
   try {
     const stored = localStorage.getItem('amostra-control-user')
@@ -86,7 +93,7 @@ function App() {
     try {
       const data = await fetchCollections(filters)
       if (Array.isArray(data)) {
-        setSchedule(data.length > 0 ? normalizeRemoteRows(data) : initialSchedule)
+        setSchedule(normalizeRemoteRows(data))
       }
       setApiStatus('Conectado ao Railway')
     } catch (error) {
@@ -114,10 +121,15 @@ function App() {
       }
 
       if (hasApiConfigured()) {
-        if (updatedRow.remote) {
-          savedRow = await updateCollectionApi(updatedRow.id, savedRow)
-        } else {
+        if (shouldCreateInsteadOfUpdate(updatedRow)) {
           savedRow = await createCollection(savedRow)
+        } else {
+          try {
+            savedRow = await updateCollectionApi(updatedRow.id, savedRow)
+          } catch (error) {
+            if (!String(error.message || '').includes('Coleta não encontrada')) throw error
+            savedRow = await createCollection({ ...savedRow, remote: false })
+          }
         }
 
         savedRow = { ...savedRow, remote: true }

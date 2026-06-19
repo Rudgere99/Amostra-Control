@@ -1,9 +1,10 @@
 import { formatClockTime, formatHourRange } from './time.js'
+import { formatShortDate } from './date.js'
 
 export function exportScheduleCsv(schedule) {
   const headers = ['Data', 'Hora programada', 'Planta', 'Turno', 'Letra', 'SF1', 'HTT1', 'NPO1', 'Amostrador', 'Cadastro', 'Hora real', 'Fino agregado NPO', 'Fino agregado HTT', 'CCCO informado', 'Status', 'Observações']
   const rows = schedule.map((item) => [
-    item.date,
+    formatShortDate(item.date),
     formatHourRange(item.time),
     item.plant,
     item.shift,

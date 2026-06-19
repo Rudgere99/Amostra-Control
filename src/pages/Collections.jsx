@@ -6,22 +6,7 @@ import StatusBadge from '../components/StatusBadge.jsx'
 import SampleBadge from '../components/SampleBadge.jsx'
 import { exportScheduleCsv } from '../utils/exportCsv.js'
 import { formatClockTime, formatHourRange, toHourNumber } from '../utils/time.js'
-
-function formatLocalDate(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function today() {
-  return formatLocalDate(new Date())
-}
-
-function normalizeDate(value) {
-  if (!value) return ''
-  return String(value).slice(0, 10)
-}
+import { formatShortDate, normalizeDate, today } from '../utils/date.js'
 
 function createLocalDate(date) {
   const [year, month, day] = String(date || '').split('-').map(Number)
@@ -163,7 +148,7 @@ function fixedDayRows(date, plant, loggedUser) {
 function mergeFixedRows(baseRows, scheduleRows) {
   return baseRows.map((base) => {
     const saved = scheduleRows.find((item) => normalizeHour(item.time) === normalizeHour(base.time))
-    return saved ? { ...base, ...saved, shift: base.shift, remote: true } : base
+    return saved ? { ...base, ...saved, shift: base.shift, remote: Boolean(saved.remote) } : base
   })
 }
 
@@ -326,7 +311,7 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
         <div className="table-card__header">
           <div>
             <h3>Lançamento das coletas</h3>
-            <span>{tableBase.plant} | {tableBase.date} | Tabela fixa 00-01 até 23-00.</span>
+            <span>{tableBase.plant} | {formatShortDate(tableBase.date)} | Tabela fixa 00-01 até 23-00.</span>
           </div>
         </div>
 

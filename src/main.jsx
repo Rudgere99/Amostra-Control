@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardCheck, FileText, Home, Settings, Users } from './components/LocalIcons.jsx'
+import { AlertTriangle, Beaker, CalendarClock, CheckCircle2, ClipboardCheck, FileText, Home, Settings, Users } from './components/LocalIcons.jsx'
 import AppLayout from './layouts/AppLayout.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Collections from './pages/Collections.jsx'
@@ -10,6 +10,7 @@ import Reports from './pages/Reports.jsx'
 import BestPractices from './pages/BestPractices.jsx'
 import UsersPage from './pages/UsersPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
+import Laboratory from './pages/Laboratory.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { initialSchedule } from './data/sampleSchedule.js'
 import { buildStats } from './utils/status.js'
@@ -18,23 +19,29 @@ import './styles.css'
 import './api-status.css'
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'collections', label: 'Coletas', icon: ClipboardCheck },
-  { id: 'history', label: 'Histórico', icon: CalendarClock },
-  { id: 'best-practices', label: 'Boas Práticas', icon: CheckCircle2 },
+  { id: 'dashboard', label: 'Dashboard', icon: Home, blockedProfiles: ['laboratorista'] },
+  { id: 'collections', label: 'Coletas', icon: ClipboardCheck, blockedProfiles: ['laboratorista'] },
+  { id: 'laboratory', label: 'Laboratório', icon: Beaker, allowedProfiles: ['laboratorista', 'admin'] },
+  { id: 'history', label: 'Histórico', icon: CalendarClock, blockedProfiles: ['laboratorista'] },
+  { id: 'best-practices', label: 'Boas Práticas', icon: CheckCircle2, blockedProfiles: ['laboratorista'] },
   { id: 'contingency', label: 'Contingência', icon: AlertTriangle, blockedProfiles: ['amostrador'] },
-  { id: 'reports', label: 'Relatórios', icon: FileText },
+  { id: 'reports', label: 'Relatórios', icon: FileText, blockedProfiles: ['laboratorista'] },
   { id: 'users', label: 'Usuários', icon: Users, blockedProfiles: ['amostrador'] },
   { id: 'settings', label: 'Configurações', icon: Settings, blockedProfiles: ['amostrador'] }
 ]
 
 function isPageAllowedForUser(item, user) {
   const profile = String(user?.profile || '').trim().toLowerCase()
+  if (item?.allowedProfiles?.length) return item.allowedProfiles.includes(profile)
   return !item?.blockedProfiles?.includes(profile)
 }
 
 function getAllowedNavItems(user) {
   return navItems.filter((item) => isPageAllowedForUser(item, user))
+}
+
+function getDefaultPage(user) {
+  return getAllowedNavItems(user)[0]?.id || 'dashboard'
 }
 
 function normalizeRemoteRows(rows) {
@@ -166,7 +173,7 @@ function App() {
 
   useEffect(() => {
     if (loggedUser && !allowedNavItems.some((item) => item.id === activePage)) {
-      setActivePage('dashboard')
+      setActivePage(getDefaultPage(loggedUser))
     }
   }, [activePage, allowedNavItems, loggedUser])
 
@@ -174,10 +181,11 @@ function App() {
     return <LoginPage onLogin={setLoggedUser} />
   }
 
-  const currentPage = allowedNavItems.some((item) => item.id === activePage) ? activePage : 'dashboard'
+  const currentPage = allowedNavItems.some((item) => item.id === activePage) ? activePage : getDefaultPage(loggedUser)
   const commonProps = { schedule, stats, updateCollection, alertVisible, setAlertVisible, apiStatus, isSaving, generateFullDay, reloadCollections: loadCollections, loggedUser }
 
   const page = {
+    laboratory: <Laboratory {...commonProps} />,
     dashboard: <Dashboard {...commonProps} onOpenCollections={() => setActivePage('collections')} />,
     collections: <Collections {...commonProps} />,
     history: <History schedule={schedule} />,

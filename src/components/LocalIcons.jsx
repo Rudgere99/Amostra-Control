@@ -99,3 +99,7 @@ export function LogIn(props) {
 export function UserPlus(props) {
   return <BaseIcon {...props}><path d="M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><path d="M19 8v6" /><path d="M16 11h6" /></BaseIcon>
 }
+
+export function Beaker(props) {
+  return <BaseIcon {...props}><path d="M9 3h6" /><path d="M10 3v6l-5 9a3 3 0 0 0 2.6 4h8.8a3 3 0 0 0 2.6-4l-5-9V3" /><path d="M8 15h8" /></BaseIcon>
+}

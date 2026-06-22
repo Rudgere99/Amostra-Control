@@ -35,6 +35,99 @@ function toBoolean(value) {
   return Boolean(value)
 }
 
+
+function addDaysIso(date, days) {
+  const base = new Date(`${date}T00:00:00.000Z`)
+  if (Number.isNaN(base.getTime())) return null
+  base.setUTCDate(base.getUTCDate() + days)
+  return base.toISOString().slice(0, 10)
+}
+
+function labWindowWhere(startParamIndex = 1) {
+  return `(
+    (data_coleta = $${startParamIndex} AND hora_programada >= TIME '07:00:00')
+    OR (data_coleta = $${startParamIndex + 1} AND hora_programada <= TIME '06:00:00')
+  )`
+}
+
+router.get('/laboratorio', async (req, res) => {
+  try {
+    const date = String(req.query.date || '').slice(0, 10)
+    const endDate = addDaysIso(date, 1)
+
+    if (!date || !endDate) {
+      return res.status(400).json({ error: 'Informe uma data operacional válida.' })
+    }
+
+    const result = await pool.query(`
+      SELECT
+        planta,
+        COUNT(*) FILTER (WHERE status = 'coletado')::int AS coletas_realizadas,
+        COALESCE(BOOL_AND(laboratorio_recebido) FILTER (WHERE status = 'coletado'), FALSE) AS laboratorio_recebido,
+        MAX(laboratorio_recebido_por) AS laboratorio_recebido_por,
+        MAX(laboratorio_observacoes) AS laboratorio_observacoes,
+        MAX(laboratorio_recebido_em) AS laboratorio_recebido_em
+      FROM coletas_amostras
+      WHERE ${labWindowWhere(1)}
+      GROUP BY planta
+      HAVING COUNT(*) FILTER (WHERE status = 'coletado') > 0
+      ORDER BY planta ASC;
+    `, [date, endDate])
+
+    res.json(result.rows.map((row) => ({
+      plant: row.planta,
+      operationalDate: date,
+      collectedSamples: row.coletas_realizadas,
+      expectedBags: 3,
+      received: row.laboratorio_recebido,
+      receivedBy: row.laboratorio_recebido_por,
+      receiptNotes: row.laboratorio_observacoes,
+      receiptAt: row.laboratorio_recebido_em
+    })))
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao listar amostras do laboratório.', details: error.message })
+  }
+})
+
+router.post('/laboratorio/recebimento', async (req, res) => {
+  try {
+    const date = String(req.body.date || '').slice(0, 10)
+    const plant = String(req.body.plant || '').trim()
+    const receivedBy = String(req.body.receivedBy || req.body.badge || req.body.cadastro || '').trim()
+    const notes = String(req.body.notes || req.body.observations || '').trim()
+    const endDate = addDaysIso(date, 1)
+
+    if (!date || !endDate || !plant || !receivedBy) {
+      return res.status(400).json({ error: 'Data operacional, planta e ID de confirmação são obrigatórios.' })
+    }
+
+    const result = await pool.query(`
+      UPDATE coletas_amostras
+      SET laboratorio_recebido = TRUE,
+          laboratorio_recebido_por = $2,
+          laboratorio_observacoes = $3,
+          laboratorio_recebido_em = CURRENT_TIMESTAMP,
+          atualizado_em = CURRENT_TIMESTAMP
+      WHERE ${labWindowWhere(4)}
+        AND planta = $1
+        AND status = 'coletado'
+      RETURNING *;
+    `, [plant, receivedBy, notes || null, date, endDate])
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: 'Nenhuma coleta realizada encontrada para esta planta na janela 07:00-06:00.' })
+    }
+
+    res.json({
+      message: 'Recebimento confirmado com sucesso.',
+      updated: result.rowCount,
+      rows: result.rows.map(mapColeta)
+    })
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao confirmar recebimento do laboratório.', details: error.message })
+  }
+})
+
 async function ensureProgramacao(client, body) {
   const programacaoId = body.programacaoId || body.programacao_id || null
   if (programacaoId) return programacaoId

@@ -6,7 +6,8 @@ import { createUser, fetchUsers, hasApiConfigured, updateUserStatus } from '../s
 const fallbackUsers = [
   { id: 1, name: 'Amostrador Campo', badge: '1023', profile: 'amostrador', letter: 'A', active: true },
   { id: 2, name: 'Controlador CCO', badge: '2001', profile: 'cco', letter: 'B', active: true },
-  { id: 3, name: 'Administrador', badge: '0001', profile: 'admin', letter: 'C', active: true }
+  { id: 3, name: 'Administrador', badge: '0001', profile: 'admin', letter: 'C', active: true },
+  { id: 4, name: 'Laboratorista', badge: '3001', profile: 'laboratorista', letter: '', active: true }
 ]
 
 export default function UsersPage() {
@@ -95,7 +96,7 @@ export default function UsersPage() {
       <PageHeader
         eyebrow="Cadastros"
         title="Usuários"
-        description="Cadastro real de amostradores, CCO e administradores para login e lançamentos de coleta."
+        description="Cadastro real de amostradores, CCO e administradores e laboratoristas para login e lançamentos de coleta."
         actions={(
           <button className="btn btn--ghost" type="button" onClick={loadUsers} disabled={saving}>
             <RefreshCcw size={17} /> Atualizar usuários
@@ -112,7 +113,7 @@ export default function UsersPage() {
         </div>
         <label>Nome<input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Nome do usuário" /></label>
         <label>Cadastro<input value={form.badge} onChange={(e) => setField('badge', e.target.value)} placeholder="Matrícula/cadastro" /></label>
-        <label>Perfil<select value={form.profile} onChange={(e) => setField('profile', e.target.value)}><option value="amostrador">Amostrador</option><option value="cco">CCO</option><option value="admin">Admin</option></select></label>
+        <label>Perfil<select value={form.profile} onChange={(e) => setField('profile', e.target.value)}><option value="amostrador">Amostrador</option><option value="cco">CCO</option><option value="laboratorista">Laboratorista</option><option value="admin">Admin</option></select></label>
         <label>Letra do turno<select value={form.letter} onChange={(e) => setField('letter', e.target.value)}><option value="">Sem letra</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></label>
         <button className="btn btn--orange" type="submit" disabled={saving}><UserPlus size={17} /> {saving ? 'Salvando...' : 'Salvar usuário'}</button>
       </form>

@@ -60,71 +60,148 @@ router.get('/laboratorio', async (req, res) => {
     }
 
     const result = await pool.query(`
+      WITH coletas_janela AS (
+        SELECT planta
+        FROM coletas_amostras
+        WHERE ${labWindowWhere(1)}
+          AND status = 'coletado'
+      ), plantas AS (
+        SELECT planta, COUNT(*)::int AS coletas_realizadas
+        FROM coletas_janela
+        GROUP BY planta
+      )
       SELECT
-        planta,
-        COUNT(*) FILTER (WHERE status = 'coletado')::int AS coletas_realizadas,
-        COALESCE(BOOL_AND(laboratorio_recebido) FILTER (WHERE status = 'coletado'), FALSE) AS laboratorio_recebido,
-        MAX(laboratorio_recebido_por) AS laboratorio_recebido_por,
-        MAX(laboratorio_observacoes) AS laboratorio_observacoes,
-        MAX(laboratorio_recebido_em) AS laboratorio_recebido_em
-      FROM coletas_amostras
-      WHERE ${labWindowWhere(1)}
-      GROUP BY planta
-      HAVING COUNT(*) FILTER (WHERE status = 'coletado') > 0
-      ORDER BY planta ASC;
+        plantas.planta,
+        plantas.coletas_realizadas,
+        COALESCE(recebimentos.recebido_sf1, FALSE) AS recebido_sf1,
+        COALESCE(recebimentos.recebido_htt1, FALSE) AS recebido_htt1,
+        COALESCE(recebimentos.recebido_npo1, FALSE) AS recebido_npo1,
+        recebimentos.recebido_por,
+        recebimentos.observacoes,
+        recebimentos.atualizado_em
+      FROM plantas
+      LEFT JOIN laboratorio_recebimentos recebimentos
+        ON recebimentos.data_operacional = $1
+       AND recebimentos.planta = plantas.planta
+      ORDER BY plantas.planta ASC;
     `, [date, endDate])
 
-    res.json(result.rows.map((row) => ({
-      plant: row.planta,
-      operationalDate: date,
-      collectedSamples: row.coletas_realizadas,
-      expectedBags: 3,
-      received: row.laboratorio_recebido,
-      receivedBy: row.laboratorio_recebido_por,
-      receiptNotes: row.laboratorio_observacoes,
-      receiptAt: row.laboratorio_recebido_em
-    })))
+    res.json(result.rows.map((row) => {
+      const receivedMaterials = {
+        sf1: row.recebido_sf1,
+        htt1: row.recebido_htt1,
+        npo1: row.recebido_npo1
+      }
+
+      return {
+        plant: row.planta,
+        operationalDate: date,
+        collectedSamples: row.coletas_realizadas,
+        expectedBags: 3,
+        receivedMaterials,
+        received: receivedMaterials.sf1 && receivedMaterials.htt1 && receivedMaterials.npo1,
+        receivedBy: row.recebido_por,
+        receiptNotes: row.observacoes,
+        receiptAt: row.atualizado_em
+      }
+    }))
   } catch (error) {
     res.status(500).json({ error: 'Erro ao listar amostras do laboratório.', details: error.message })
   }
 })
 
 router.post('/laboratorio/recebimento', async (req, res) => {
+  const client = await pool.connect()
+
   try {
     const date = String(req.body.date || '').slice(0, 10)
     const plant = String(req.body.plant || '').trim()
     const receivedBy = String(req.body.receivedBy || req.body.badge || req.body.cadastro || '').trim()
     const notes = String(req.body.notes || req.body.observations || '').trim()
+    const receivedMaterials = req.body.receivedMaterials || {}
+    const sf1 = toBoolean(req.body.sf1 ?? receivedMaterials.sf1)
+    const htt1 = toBoolean(req.body.htt1 ?? receivedMaterials.htt1)
+    const npo1 = toBoolean(req.body.npo1 ?? receivedMaterials.npo1)
     const endDate = addDaysIso(date, 1)
 
     if (!date || !endDate || !plant || !receivedBy) {
       return res.status(400).json({ error: 'Data operacional, planta e ID de confirmação são obrigatórios.' })
     }
 
-    const result = await pool.query(`
-      UPDATE coletas_amostras
-      SET laboratorio_recebido = TRUE,
-          laboratorio_recebido_por = $2,
-          laboratorio_observacoes = $3,
-          laboratorio_recebido_em = CURRENT_TIMESTAMP,
-          atualizado_em = CURRENT_TIMESTAMP
-      WHERE ${labWindowWhere(4)}
-        AND planta = $1
-        AND status = 'coletado'
-      RETURNING *;
-    `, [plant, receivedBy, notes || null, date, endDate])
+    await client.query('BEGIN')
 
-    if (!result.rowCount) {
+    const coletas = await client.query(`
+      SELECT COUNT(*)::int AS total
+      FROM coletas_amostras
+      WHERE ${labWindowWhere(2)}
+        AND planta = $1
+        AND status = 'coletado';
+    `, [plant, date, endDate])
+
+    if (!coletas.rows[0]?.total) {
+      await client.query('ROLLBACK')
       return res.status(404).json({ error: 'Nenhuma coleta realizada encontrada para esta planta na janela 07:00-06:00.' })
     }
 
+    const result = await client.query(`
+      INSERT INTO laboratorio_recebimentos (
+        data_operacional,
+        planta,
+        recebido_sf1,
+        recebido_htt1,
+        recebido_npo1,
+        recebido_por,
+        observacoes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (data_operacional, planta)
+      DO UPDATE SET
+        recebido_sf1 = EXCLUDED.recebido_sf1,
+        recebido_htt1 = EXCLUDED.recebido_htt1,
+        recebido_npo1 = EXCLUDED.recebido_npo1,
+        recebido_por = EXCLUDED.recebido_por,
+        observacoes = EXCLUDED.observacoes,
+        atualizado_em = CURRENT_TIMESTAMP
+      RETURNING *;
+    `, [date, plant, sf1, htt1, npo1, receivedBy, notes || null])
+
+    await client.query(`
+      UPDATE coletas_amostras
+      SET laboratorio_recebido = $4,
+          laboratorio_recebido_por = $5,
+          laboratorio_observacoes = $6,
+          laboratorio_recebido_em = CURRENT_TIMESTAMP,
+          atualizado_em = CURRENT_TIMESTAMP
+      WHERE ${labWindowWhere(2)}
+        AND planta = $1
+        AND status = 'coletado';
+    `, [plant, date, endDate, sf1 && htt1 && npo1, receivedBy, notes || null])
+
+    await client.query('COMMIT')
+
+    const row = result.rows[0]
     res.json({
-      message: 'Recebimento confirmado com sucesso.',
-      updated: result.rowCount,
-      rows: result.rows.map(mapColeta)
+      message: 'Lançamento do laboratório salvo com sucesso.',
+      receipt: {
+        plant: row.planta,
+        operationalDate: row.data_operacional,
+        collectedSamples: coletas.rows[0].total,
+        expectedBags: 3,
+        receivedMaterials: {
+          sf1: row.recebido_sf1,
+          htt1: row.recebido_htt1,
+          npo1: row.recebido_npo1
+        },
+        received: row.recebido_sf1 && row.recebido_htt1 && row.recebido_npo1,
+        receivedBy: row.recebido_por,
+        receiptNotes: row.observacoes,
+        receiptAt: row.atualizado_em
+      }
     })
   } catch (error) {
-    res.status(500).json({ error: 'Erro ao confirmar recebimento do laboratório.', details: error.message })
+    await client.query('ROLLBACK')
+    res.status(500).json({ error: 'Erro ao salvar lançamento do laboratório.', details: error.message })
+  } finally {
+    client.release()
   }
 })
 

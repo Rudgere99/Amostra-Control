@@ -62,14 +62,18 @@ function LaboratoryReceiptModal({ row, loggedUser, onClose, onSave, saving }) {
     receivedMaterials: normalizeMaterials(row)
   })
 
-  function setMaterial(key, checked) {
+  function setMaterial(key, value) {
     setForm((current) => ({
       ...current,
       receivedMaterials: {
         ...current.receivedMaterials,
-        [key]: checked
+        [key]: value === 'sim'
       }
     }))
+  }
+
+  function setField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }))
   }
 
   function submit(event) {
@@ -78,42 +82,33 @@ function LaboratoryReceiptModal({ row, loggedUser, onClose, onSave, saving }) {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="lab-receipt-title">
-      <form className="modal-card collection-modal" onSubmit={submit}>
+    <div className="modal-backdrop">
+      <form className="modal-card" onSubmit={submit}>
         <div className="modal-card__header">
           <div>
-            <span>Laboratório</span>
-            <h3 id="lab-receipt-title">Confirmar recebimento - {row.plant}</h3>
-            <p>Janela operacional {row.operationalDate}: 07:00 até 06:00 do dia seguinte.</p>
+            <span className="eyebrow">Registro de laboratório</span>
+            <h3>Confirmar recebimento - {row.plant}</h3>
           </div>
-          <button className="modal-close" type="button" onClick={onClose} aria-label="Fechar">×</button>
+          <button className="icon-btn" type="button" onClick={onClose} aria-label="Fechar">×</button>
         </div>
 
-        <div className="modal-grid">
-          <label>
-            ID/cadastro da confirmação
-            <input value={form.receivedBy} onChange={(event) => setForm((current) => ({ ...current, receivedBy: event.target.value }))} placeholder="Informe o ID" required />
-          </label>
-          <label>
-            Observação
-            <textarea value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Registre divergências, avarias ou observações do recebimento" rows="4" />
-          </label>
+        <div className="form-grid">
+          <label>Usuário logado<input value={loggedUser?.name || 'Laboratório'} readOnly /></label>
+          <label>Matrícula<input value={loggedUser?.badge || '-'} readOnly /></label>
+          <label>Planta<input value={row.plant || '-'} readOnly /></label>
+          <label>Data operacional<input value={row.operationalDate || '-'} readOnly /></label>
+          <label>Janela inicial<input value="07:00" readOnly /></label>
+          <label>Janela final<input value="06:00 do dia seguinte" readOnly /></label>
+          <label>Coletas realizadas<input value={row.collectedSamples ?? 0} readOnly /></label>
+          <label>Sacos esperados<input value={row.expectedBags ?? 3} readOnly /></label>
+          <label>ID/cadastro da confirmação<input value={form.receivedBy} onChange={(event) => setField('receivedBy', event.target.value)} placeholder="Informe o ID" required /></label>
+          <label>SF1 recebido?<select value={form.receivedMaterials.sf1 ? 'sim' : 'nao'} onChange={(event) => setMaterial('sf1', event.target.value)}><option value="sim">Sim</option><option value="nao">Não</option></select></label>
+          <label>HTT1 recebido?<select value={form.receivedMaterials.htt1 ? 'sim' : 'nao'} onChange={(event) => setMaterial('htt1', event.target.value)}><option value="sim">Sim</option><option value="nao">Não</option></select></label>
+          <label>NPO1 recebido?<select value={form.receivedMaterials.npo1 ? 'sim' : 'nao'} onChange={(event) => setMaterial('npo1', event.target.value)}><option value="sim">Sim</option><option value="nao">Não</option></select></label>
+          <label className="form-grid__full">Observações do recebimento<textarea value={form.notes} onChange={(event) => setField('notes', event.target.value)} placeholder="Registre divergências, avarias ou observações do recebimento" /></label>
         </div>
 
-        <div className="modal-section">
-          <h4>Materiais recebidos</h4>
-          <p>Marque cada um dos três tipos de material que chegou ao laboratório.</p>
-          <div className="sample-toggle-grid">
-            {materialLabels.map((material) => (
-              <label className="sample-toggle" key={material.key}>
-                <input type="checkbox" checked={form.receivedMaterials[material.key]} onChange={(event) => setMaterial(material.key, event.target.checked)} />
-                <span>{material.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="modal-actions">
+        <div className="modal-card__actions">
           <button className="btn btn--ghost" type="button" onClick={onClose} disabled={saving}>Cancelar</button>
           <button className="btn btn--orange" type="submit" disabled={saving}><Save size={17} /> {saving ? 'Salvando...' : 'Salvar lançamento'}</button>
         </div>

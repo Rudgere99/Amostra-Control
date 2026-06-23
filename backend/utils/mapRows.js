@@ -20,6 +20,10 @@ export function mapColeta(row) {
     status: row.status,
     notes: row.observacoes,
     createdAt: row.criado_em,
+    labReceived: row.laboratorio_recebido,
+    labReceivedBy: row.laboratorio_recebido_por,
+    labReceiptNotes: row.laboratorio_observacoes,
+    labReceivedAt: row.laboratorio_recebido_em,
     updatedAt: row.atualizado_em
   }
 }

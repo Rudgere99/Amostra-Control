@@ -51,6 +51,20 @@ export async function updateCollectionApi(id, payload) {
   })
 }
 
+export async function fetchLabSamples(filters = {}) {
+  const params = new URLSearchParams()
+  if (filters.date) params.set('date', filters.date)
+  const query = params.toString() ? `?${params.toString()}` : ''
+  return request(`/api/coletas/laboratorio${query}`)
+}
+
+export async function confirmLabReceipt(payload) {
+  return request('/api/coletas/laboratorio/recebimento', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
 export async function fetchDashboardSummary(filters = {}) {
   const params = new URLSearchParams()
   if (typeof filters === 'string') {

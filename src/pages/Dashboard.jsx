@@ -2,9 +2,8 @@ import React from 'react'
 import { Activity, AlertTriangle, CheckCircle2, Clock3, Target } from '../components/LocalIcons.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import StatCard from '../components/StatCard.jsx'
-import AlertBanner from '../components/AlertBanner.jsx'
 
-export default function Dashboard({ stats, alertVisible, setAlertVisible, onOpenCollections }) {
+export default function Dashboard({ stats }) {
   const safeStats = {
     total: stats?.total ?? 0,
     done: stats?.done ?? 0,
@@ -24,13 +23,12 @@ export default function Dashboard({ stats, alertVisible, setAlertVisible, onOpen
         description="Acompanhamento em tempo real das coletas horárias por pilha, amostrador e status. Os indicadores são calculados a partir dos lançamentos salvos no backend."
       />
 
-      <AlertBanner visible={alertVisible} onClose={() => setAlertVisible(false)} onOpenCollections={onOpenCollections} />
 
       <section className="stats-grid">
         <StatCard label="Programadas" value={safeStats.total} detail="faixas previstas no dia" tone="blue" icon={Target} />
-        <StatCard label="Realizadas" value={safeStats.done} detail="salvas no backend" tone="green" icon={CheckCircle2} />
         <StatCard label="Pendentes" value={safeStats.pending} detail="sem lançamento concluído" tone="orange" icon={Clock3} />
-        <StatCard label="Atrasadas" value={safeStats.late} detail="horários vencidos" tone="red" icon={AlertTriangle} />
+        <StatCard label="Realizadas" value={safeStats.done} detail="salvas no backend" tone="green" icon={CheckCircle2} />
+        <StatCard label="Não realizadas" value={safeStats.notDone} detail="lançadas como não realizadas" tone="red" icon={AlertTriangle} />
         <StatCard label="Aderência" value={`${safeStats.adherence}%`} detail="realizadas/programadas" tone="yellow" icon={Activity} />
       </section>
 
@@ -45,7 +43,7 @@ export default function Dashboard({ stats, alertVisible, setAlertVisible, onOpen
           <div className="progress-block">
             <div className="progress-block__top"><strong>{safeStats.adherence}%</strong><span>Aderência atual</span></div>
             <div className="progress-bar"><div style={{ width: `${safeStats.adherence}%` }}></div></div>
-            <p>Prioridade operacional: tratar coletas pendentes e atrasadas antes do próximo horário fechado.</p>
+            <p>Prioridade operacional: tratar coletas pendentes e não realizadas para manter a aderência do dia.</p>
           </div>
         </div>
 
@@ -57,11 +55,11 @@ export default function Dashboard({ stats, alertVisible, setAlertVisible, onOpen
             </div>
           </div>
           <div className="critical-list">
-            <div><span className="dot dot--red"></span> Atrasadas <strong>{safeStats.late}</strong></div>
             <div><span className="dot dot--orange"></span> Pendentes <strong>{safeStats.pending}</strong></div>
-            <div><span className="dot dot--yellow"></span> Parciais <strong>{safeStats.partial}</strong></div>
-            <div><span className="dot dot--green"></span> Concluídas <strong>{safeStats.done}</strong></div>
+            <div><span className="dot dot--green"></span> Realizadas <strong>{safeStats.done}</strong></div>
             <div><span className="dot dot--orange"></span> Não realizadas <strong>{safeStats.notDone}</strong></div>
+            <div><span className="dot dot--red"></span> Atrasadas <strong>{safeStats.late}</strong></div>
+            <div><span className="dot dot--yellow"></span> Parciais <strong>{safeStats.partial}</strong></div>
             <div><span className="dot dot--yellow"></span> Com fino agregado <strong>{safeStats.fine}</strong></div>
           </div>
         </div>

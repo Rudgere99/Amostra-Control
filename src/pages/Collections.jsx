@@ -144,7 +144,7 @@ function fixedDayRows(date, plant, loggedUser) {
     plant,
     time: `${String(hour).padStart(2, '0')}:00`,
     shift: shiftByHour(hour),
-    letter: loggedUser?.letter || '',
+    letter: '',
     status: 'pendente',
     sf1: false,
     htt1: false,
@@ -262,7 +262,7 @@ export default function Collections({ schedule = [], updateCollection, reloadCol
       shift: shiftByHour(hour),
       sampler: loggedUser?.name || updatedRow.sampler || '',
       badge: loggedUser?.badge || updatedRow.badge || '',
-      letter: loggedUser?.letter || updatedRow.letter || '',
+      letter: updatedRow.letter || loggedUser?.letter || '',
       fine: Boolean(updatedRow.fineNpo || updatedRow.fineHtt)
     })
     setSelected(null)

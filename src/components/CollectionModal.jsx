@@ -3,21 +3,23 @@ import { nowTime } from '../utils/status.js'
 import { formatClockTime, formatHourRange } from '../utils/time.js'
 
 export default function CollectionModal({ row, loggedUser, onClose, onSave }) {
+  const isNewLaunch = !row.remote && (row.status || 'pendente') === 'pendente' && !row.sf1 && !row.htt1 && !row.npo1
+
   const [form, setForm] = useState({
-    sf1: Boolean(row.sf1),
-    htt1: Boolean(row.htt1),
-    npo1: Boolean(row.npo1),
+    sf1: isNewLaunch ? true : Boolean(row.sf1),
+    htt1: isNewLaunch ? true : Boolean(row.htt1),
+    npo1: isNewLaunch ? true : Boolean(row.npo1),
     fineNpo: Boolean(row.fineNpo),
     fineHtt: Boolean(row.fineHtt),
     ccco: Boolean(row.ccco),
-    status: row.status || 'pendente',
+    status: isNewLaunch ? 'coletado' : row.status || 'pendente',
     notes: row.notes || '',
     realTime: row.realTime || nowTime()
   })
 
   const sampler = loggedUser?.name || row.sampler || ''
   const badge = loggedUser?.badge || row.badge || ''
-  const letter = loggedUser?.letter || row.letter || ''
+  const letter = row.letter || loggedUser?.letter || ''
 
   function setField(field, value) {
     setForm((current) => {

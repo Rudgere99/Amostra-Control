@@ -49,10 +49,23 @@ CREATE TABLE IF NOT EXISTS coletas_amostras (
 ALTER TABLE coletas_amostras ADD COLUMN IF NOT EXISTS fino_agregado_npo BOOLEAN DEFAULT FALSE;
 ALTER TABLE coletas_amostras ADD COLUMN IF NOT EXISTS fino_agregado_htt BOOLEAN DEFAULT FALSE;
 
+CREATE TABLE IF NOT EXISTS auditoria_coletas (
+  id SERIAL PRIMARY KEY,
+  coleta_id INTEGER REFERENCES coletas_amostras(id) ON DELETE SET NULL,
+  cadastro VARCHAR(50),
+  acao VARCHAR(50) NOT NULL,
+  dados_anteriores JSONB,
+  dados_novos JSONB,
+  criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_programacao_data ON programacao_amostragem(data_programada);
+CREATE INDEX IF NOT EXISTS idx_programacao_data_planta ON programacao_amostragem(data_programada, planta);
 CREATE INDEX IF NOT EXISTS idx_coletas_data ON coletas_amostras(data_coleta);
+CREATE INDEX IF NOT EXISTS idx_coletas_data_planta_hora ON coletas_amostras(data_coleta, planta, hora_programada);
 CREATE INDEX IF NOT EXISTS idx_coletas_status ON coletas_amostras(status);
 CREATE INDEX IF NOT EXISTS idx_coletas_cadastro ON coletas_amostras(cadastro);
 CREATE INDEX IF NOT EXISTS idx_coletas_fino_npo ON coletas_amostras(fino_agregado_npo);
 CREATE INDEX IF NOT EXISTS idx_coletas_fino_htt ON coletas_amostras(fino_agregado_htt);
 CREATE INDEX IF NOT EXISTS idx_usuarios_letra ON usuarios(letra);
+CREATE INDEX IF NOT EXISTS idx_auditoria_coletas_coleta ON auditoria_coletas(coleta_id);

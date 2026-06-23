@@ -1,49 +1,19 @@
 import express from 'express'
 import { pool } from '../db/pool.js'
 import { mapColeta } from '../utils/mapRows.js'
+import { getLaunchLock, shiftByTime } from '../utils/dateRules.js'
+import { pickCollectionPayload, validateCollectionPayload } from '../utils/validators.js'
 
 const router = express.Router()
 
-function normalizeTime(time) {
-  if (!time) return null
-
-  const value = String(time).trim()
-  const rangeMatch = value.match(/^(\d{1,2})-(\d{1,2})$/)
-  if (rangeMatch) {
-    return `${String(Number(rangeMatch[1])).padStart(2, '0')}:00:00`
-  }
-
-  const clockMatch = value.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
-  if (clockMatch) {
-    const [, hour, minute, second = '00'] = clockMatch
-    return `${String(Number(hour)).padStart(2, '0')}:${minute}:${second}`
-  }
-
-  return value
+function dateOnly(value) {
+  if (!value) return null
+  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  return String(value).slice(0, 10)
 }
 
-function shiftByTime(time, fallback = null) {
-  const normalized = normalizeTime(time)
-  const hour = normalized ? Number(String(normalized).slice(0, 2)) : NaN
-  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return fallback
-  return hour >= 7 && hour <= 18 ? '1º Turno' : '2º Turno'
-}
-
-function toBoolean(value) {
-  if (typeof value === 'boolean') return value
-  if (typeof value === 'string') return ['true', 'sim', '1', 'yes'].includes(value.toLowerCase())
-  return Boolean(value)
-}
-
-async function ensureProgramacao(client, body) {
-  const programacaoId = body.programacaoId || body.programacao_id || null
-  if (programacaoId) return programacaoId
-
-  const date = body.date || body.data_coleta
-  const time = normalizeTime(body.time || body.hora_programada)
-  const plant = body.plant || body.planta || null
-
-  if (!date || !time || !plant) return null
+async function ensureProgramacao(client, payload) {
+  if (payload.programacaoId) return payload.programacaoId
 
   const result = await client.query(`
     INSERT INTO programacao_amostragem (data_programada, hora_programada, planta, turno, letra, status)
@@ -52,15 +22,94 @@ async function ensureProgramacao(client, body) {
     DO UPDATE SET turno = EXCLUDED.turno, letra = EXCLUDED.letra, status = EXCLUDED.status
     RETURNING id;
   `, [
-    date,
-    time,
-    plant,
-    shiftByTime(time, body.shift || body.turno || null),
-    body.letter || body.letra || null,
-    body.status || 'pendente'
+    payload.date,
+    payload.time,
+    payload.plant,
+    shiftByTime(payload.time, payload.shift),
+    payload.letter || null,
+    payload.status
   ])
 
   return result.rows[0].id
+}
+
+async function findExistingCollection(client, payload, ignoreId = null) {
+  const params = [payload.date, payload.time, payload.plant]
+  let ignoreSql = ''
+
+  if (ignoreId) {
+    params.push(ignoreId)
+    ignoreSql = `AND id <> $${params.length}`
+  }
+
+  const result = await client.query(`
+    SELECT *
+    FROM coletas_amostras
+    WHERE data_coleta = $1
+      AND hora_programada = $2
+      AND planta = $3
+      ${ignoreSql}
+    ORDER BY atualizado_em DESC, criado_em DESC, id DESC
+    LIMIT 1;
+  `, params)
+
+  return result.rows[0] || null
+}
+
+function collectionParams(payload, programacaoId, id = null) {
+  const values = [
+    programacaoId,
+    payload.date,
+    payload.time,
+    payload.realTime,
+    payload.plant,
+    shiftByTime(payload.time, payload.shift),
+    payload.letter || null,
+    payload.sf1,
+    payload.htt1,
+    payload.npo1,
+    payload.sampler || null,
+    payload.badge || null,
+    Boolean(payload.fine || payload.fineNpo || payload.fineHtt),
+    payload.fineNpo,
+    payload.fineHtt,
+    payload.ccco,
+    payload.status,
+    payload.notes || null
+  ]
+
+  if (id !== null) values.push(id)
+  return values
+}
+
+async function updateCollection(client, id, payload, programacaoId) {
+  const result = await client.query(`
+    UPDATE coletas_amostras
+    SET
+      programacao_id = COALESCE($1, programacao_id),
+      data_coleta = $2,
+      hora_programada = $3,
+      hora_real = $4,
+      planta = $5,
+      turno = $6,
+      letra = $7,
+      pilha_sf1 = $8,
+      pilha_htt1 = $9,
+      pilha_npo1 = $10,
+      amostrador_nome = $11,
+      cadastro = $12,
+      contem_fino_agregado = $13,
+      fino_agregado_npo = $14,
+      fino_agregado_htt = $15,
+      informado_ccco = $16,
+      status = $17,
+      observacoes = $18,
+      atualizado_em = CURRENT_TIMESTAMP
+    WHERE id = $19
+    RETURNING *;
+  `, collectionParams(payload, programacaoId, id))
+
+  return result
 }
 
 router.get('/', async (req, res) => {
@@ -117,62 +166,52 @@ router.post('/', async (req, res) => {
   const client = await pool.connect()
 
   try {
-    const body = req.body
-    const time = normalizeTime(body.time || body.hora_programada)
-    const realTime = normalizeTime(body.realTime || body.hora_real)
+    const payload = pickCollectionPayload(req.body)
+    const validationError = validateCollectionPayload(payload, { requireIdentity: ['coletado', 'parcial'].includes(payload.status) })
 
-    await client.query('BEGIN')
-    const programacaoId = await ensureProgramacao(client, body)
-
-    const result = await client.query(`
-      INSERT INTO coletas_amostras (
-        programacao_id,
-        data_coleta,
-        hora_programada,
-        hora_real,
-        planta,
-        turno,
-        letra,
-        pilha_sf1,
-        pilha_htt1,
-        pilha_npo1,
-        amostrador_nome,
-        cadastro,
-        contem_fino_agregado,
-        fino_agregado_npo,
-        fino_agregado_htt,
-        informado_ccco,
-        status,
-        observacoes
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
-      RETURNING *;
-    `, [
-      programacaoId,
-      body.date,
-      time,
-      realTime,
-      body.plant || null,
-      shiftByTime(time, body.shift || null),
-      body.letter || null,
-      toBoolean(body.sf1),
-      toBoolean(body.htt1),
-      toBoolean(body.npo1),
-      body.sampler || null,
-      body.badge || null,
-      toBoolean(body.fine || body.fineNpo || body.fineHtt),
-      toBoolean(body.fineNpo),
-      toBoolean(body.fineHtt),
-      toBoolean(body.ccco),
-      body.status || 'pendente',
-      body.notes || null
-    ])
-
-    if (programacaoId) {
-      await client.query('UPDATE programacao_amostragem SET status = $1 WHERE id = $2', [body.status || 'pendente', programacaoId])
+    if (validationError) {
+      return res.status(400).json({ error: validationError })
     }
 
+    const launchLock = getLaunchLock(payload.date, payload.time)
+    if (launchLock.locked) {
+      return res.status(403).json({ error: launchLock.message })
+    }
+
+    await client.query('BEGIN')
+    const programacaoId = await ensureProgramacao(client, payload)
+    const existing = await findExistingCollection(client, payload)
+
+    const result = existing
+      ? await updateCollection(client, existing.id, payload, programacaoId)
+      : await client.query(`
+        INSERT INTO coletas_amostras (
+          programacao_id,
+          data_coleta,
+          hora_programada,
+          hora_real,
+          planta,
+          turno,
+          letra,
+          pilha_sf1,
+          pilha_htt1,
+          pilha_npo1,
+          amostrador_nome,
+          cadastro,
+          contem_fino_agregado,
+          fino_agregado_npo,
+          fino_agregado_htt,
+          informado_ccco,
+          status,
+          observacoes
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+        RETURNING *;
+      `, collectionParams(payload, programacaoId))
+
+    await client.query('UPDATE programacao_amostragem SET status = $1 WHERE id = $2', [payload.status, programacaoId])
+
     await client.query('COMMIT')
-    res.status(201).json(mapColeta(result.rows[0]))
+    res.status(existing ? 200 : 201).json(mapColeta(result.rows[0]))
   } catch (error) {
     await client.query('ROLLBACK')
     res.status(500).json({ error: 'Erro ao criar coleta.', details: error.message })
@@ -185,63 +224,40 @@ router.put('/:id', async (req, res) => {
   const client = await pool.connect()
 
   try {
-    const body = req.body
-    const time = normalizeTime(body.time || body.hora_programada)
-    const realTime = normalizeTime(body.realTime || body.hora_real)
+    const currentResult = await client.query('SELECT * FROM coletas_amostras WHERE id = $1', [req.params.id])
 
-    await client.query('BEGIN')
-    const programacaoId = await ensureProgramacao(client, body)
-
-    const result = await client.query(`
-      UPDATE coletas_amostras
-      SET
-        programacao_id = COALESCE($1, programacao_id),
-        data_coleta = COALESCE($2, data_coleta),
-        hora_programada = COALESCE($3, hora_programada),
-        planta = COALESCE($4, planta),
-        turno = COALESCE($5, turno),
-        letra = COALESCE($6, letra),
-        hora_real = $7,
-        pilha_sf1 = $8,
-        pilha_htt1 = $9,
-        pilha_npo1 = $10,
-        amostrador_nome = $11,
-        cadastro = $12,
-        contem_fino_agregado = $13,
-        fino_agregado_npo = $14,
-        fino_agregado_htt = $15,
-        informado_ccco = $16,
-        status = $17,
-        observacoes = $18,
-        atualizado_em = CURRENT_TIMESTAMP
-      WHERE id = $19
-      RETURNING *;
-    `, [
-      programacaoId,
-      body.date || null,
-      time,
-      body.plant || null,
-      shiftByTime(time, body.shift || null),
-      body.letter || null,
-      realTime,
-      toBoolean(body.sf1),
-      toBoolean(body.htt1),
-      toBoolean(body.npo1),
-      body.sampler || null,
-      body.badge || null,
-      toBoolean(body.fine || body.fineNpo || body.fineHtt),
-      toBoolean(body.fineNpo),
-      toBoolean(body.fineHtt),
-      toBoolean(body.ccco),
-      body.status || 'pendente',
-      body.notes || null,
-      req.params.id
-    ])
-
-    if (!result.rowCount) {
-      await client.query('ROLLBACK')
+    if (!currentResult.rowCount) {
       return res.status(404).json({ error: 'Coleta não encontrada.' })
     }
+
+    const current = currentResult.rows[0]
+    const payload = pickCollectionPayload({
+      date: dateOnly(current.data_coleta),
+      time: current.hora_programada,
+      plant: current.planta,
+      ...req.body
+    })
+    const validationError = validateCollectionPayload(payload, { requireIdentity: ['coletado', 'parcial'].includes(payload.status) })
+
+    if (validationError) {
+      return res.status(400).json({ error: validationError })
+    }
+
+    const launchLock = getLaunchLock(payload.date, payload.time)
+    if (launchLock.locked) {
+      return res.status(403).json({ error: launchLock.message })
+    }
+
+    await client.query('BEGIN')
+    const programacaoId = await ensureProgramacao(client, payload)
+    const duplicate = await findExistingCollection(client, payload, req.params.id)
+
+    if (duplicate) {
+      await client.query('ROLLBACK')
+      return res.status(409).json({ error: 'Já existe lançamento para esta data, faixa horária e planta.' })
+    }
+
+    const result = await updateCollection(client, req.params.id, payload, programacaoId)
 
     if (result.rows[0].programacao_id) {
       await client.query('UPDATE programacao_amostragem SET status = $1 WHERE id = $2', [result.rows[0].status, result.rows[0].programacao_id])

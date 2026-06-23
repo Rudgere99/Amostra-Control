@@ -4,7 +4,11 @@ import { fetchCollections, hasApiConfigured } from '../services/api.js'
 import { formatHourRange } from '../utils/time.js'
 
 function today() {
-  return new Date().toISOString().slice(0, 10)
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function normalizeDate(value) {
@@ -75,7 +79,7 @@ export default function History({ schedule = [] }) {
         const query = {}
         if (filters.date) query.date = filters.date
         if (filters.plant && filters.plant !== 'Todas') query.plant = filters.plant
-        query.status = 'coletado'
+        if (filters.status && filters.status !== 'Todos') query.status = filters.status
 
         const data = await fetchCollections(query)
         if (!ignore) {
@@ -94,29 +98,32 @@ export default function History({ schedule = [] }) {
 
     loadHistory()
     return () => { ignore = true }
-  }, [filters.date, filters.plant])
+  }, [filters.date, filters.plant, filters.status])
 
   const sourceRows = hasApiConfigured() ? remoteRows : schedule
 
   const logs = useMemo(() => {
     return sourceRows
-      .filter((item) => (item.remote || item.id) && item.status === 'coletado')
+      .filter((item) => {
+        const statusOk = !filters.status || filters.status === 'Todos' || item.status === filters.status
+        return (item.remote || item.id) && statusOk
+      })
       .map(makeLogFromCollection)
       .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.time || '').localeCompare(String(a.time || '')))
-  }, [sourceRows])
+  }, [sourceRows, filters.status])
 
   return (
     <div className="page-stack">
       <PageHeader
         eyebrow="Consulta"
         title="Histórico de lançamentos"
-        description="Consulta somente das coletas realizadas e salvas no backend por data, planta, amostrador e ocorrências de fino agregado."
+        description="Consulta dos lançamentos salvos no backend por data, planta, status, amostrador e ocorrências de fino agregado."
       />
 
       <div className="generation-card generation-card--fixed">
         <div>
           <h3>Filtros do histórico</h3>
-          <p>Consulte apenas as coletas realizadas já salvas no banco de dados.</p>
+          <p>Consulte os lançamentos já salvos no banco de dados.</p>
         </div>
 
         <label>
@@ -133,6 +140,18 @@ export default function History({ schedule = [] }) {
           </select>
         </label>
 
+        <label>
+          Status
+          <select value={filters.status} onChange={(e) => setFilters((current) => ({ ...current, status: e.target.value }))}>
+            <option value="Todos">Todos</option>
+            <option value="coletado">Realizada</option>
+            <option value="parcial">Parcial</option>
+            <option value="nao_realizado">Não realizada</option>
+            <option value="pendente">Pendente</option>
+            <option value="atrasado">Atrasado</option>
+          </select>
+        </label>
+
       </div>
 
       {message && <div className="api-status-bar"><span className="api-dot"></span><span>{message}</span></div>}
@@ -141,7 +160,7 @@ export default function History({ schedule = [] }) {
         <div className="table-card__header">
           <div>
             <h3>Logs de lançamentos</h3>
-            <span>{loading ? 'Carregando histórico...' : `Exibindo ${logs.length} coleta(s) realizada(s).`}</span>
+            <span>{loading ? 'Carregando histórico...' : `Exibindo ${logs.length} lançamento(s).`}</span>
           </div>
         </div>
 
@@ -175,7 +194,7 @@ export default function History({ schedule = [] }) {
 
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan="8">Nenhuma coleta realizada encontrada para os filtros selecionados.</td>
+                  <td colSpan="8">Nenhum lançamento encontrado para os filtros selecionados.</td>
                 </tr>
               )}
             </tbody>

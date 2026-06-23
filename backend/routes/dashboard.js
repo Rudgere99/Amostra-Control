@@ -1,46 +1,49 @@
 import express from 'express'
 import { pool } from '../db/pool.js'
+import { currentHourSaoPaulo, hourFromTime, todaySaoPaulo } from '../utils/dateRules.js'
 
 const router = express.Router()
 
-function today() {
-  return new Date().toISOString().slice(0, 10)
+function slotKey(plant, time) {
+  const hour = hourFromTime(time)
+  if (hour === null) return null
+  return `${plant}|${String(hour).padStart(2, '0')}`
 }
 
-function hourFromTime(value) {
-  if (!value) return null
-  const match = String(value).match(/^(\d{1,2})/)
-  if (!match) return null
-  const hour = Number(match[1])
-  return Number.isFinite(hour) ? hour : null
-}
-
-function calcCurrentHourForDate(selectedDate) {
-  if (selectedDate !== today()) return null
-  return new Date().getHours()
+function isClosedStatus(status) {
+  return ['coletado', 'parcial', 'nao_realizado'].includes(status)
 }
 
 router.get('/summary', async (req, res) => {
   try {
     const { date, plant } = req.query
-    const selectedDate = date || today()
+    const selectedDate = date || todaySaoPaulo()
     const plants = plant ? [plant] : ['Planta 01', 'Planta 02']
-    const totalProgrammed = 24 * plants.length
 
-    const result = await pool.query(`
-      SELECT *
-      FROM coletas_amostras
-      WHERE data_coleta = $1
-        AND planta = ANY($2::text[])
-      ORDER BY data_coleta ASC, planta ASC, hora_programada ASC, atualizado_em ASC, criado_em ASC, id ASC;
-    `, [selectedDate, plants])
+    const [programmedResult, collectionsResult] = await Promise.all([
+      pool.query(`
+        SELECT *
+        FROM programacao_amostragem
+        WHERE data_programada = $1
+          AND planta = ANY($2::text[])
+        ORDER BY data_programada ASC, planta ASC, hora_programada ASC;
+      `, [selectedDate, plants]),
+      pool.query(`
+        SELECT *
+        FROM coletas_amostras
+        WHERE data_coleta = $1
+          AND planta = ANY($2::text[])
+        ORDER BY data_coleta ASC, planta ASC, hora_programada ASC, atualizado_em ASC, criado_em ASC, id ASC;
+      `, [selectedDate, plants])
+    ])
 
+    const totalProgrammed = programmedResult.rowCount
     const latestBySlot = new Map()
 
-    for (const row of result.rows) {
-      const hour = hourFromTime(row.hora_programada)
-      if (hour === null) continue
-      latestBySlot.set(`${row.planta}|${String(hour).padStart(2, '0')}`, row)
+    for (const row of collectionsResult.rows) {
+      const key = slotKey(row.planta, row.hora_programada)
+      if (!key) continue
+      latestBySlot.set(key, row)
     }
 
     const records = Array.from(latestBySlot.values())
@@ -50,19 +53,20 @@ router.get('/summary', async (req, res) => {
     const fine = records.filter((row) => row.fino_agregado_npo || row.fino_agregado_htt || row.contem_fino_agregado).length
     const ccco = records.filter((row) => row.informado_ccco).length
 
-    const currentHour = calcCurrentHourForDate(selectedDate)
+    const currentHour = selectedDate === todaySaoPaulo() ? currentHourSaoPaulo() : null
     let late = records.filter((row) => row.status === 'atrasado').length
 
     if (currentHour !== null) {
-      for (const currentPlant of plants) {
-        for (let hour = 0; hour < currentHour; hour += 1) {
-          const row = latestBySlot.get(`${currentPlant}|${String(hour).padStart(2, '0')}`)
-          if (!row || row.status === 'pendente' || row.status === 'atrasado') late += 1
-        }
+      for (const programacao of programmedResult.rows) {
+        const hour = hourFromTime(programacao.hora_programada)
+        if (hour === null || hour >= currentHour) continue
+
+        const row = latestBySlot.get(`${programacao.planta}|${String(hour).padStart(2, '0')}`)
+        if (!row || row.status === 'pendente' || row.status === 'atrasado') late += 1
       }
     }
 
-    const closed = done + partial + notDone
+    const closed = records.filter((row) => isClosedStatus(row.status)).length
     const pending = Math.max(totalProgrammed - closed, 0)
     const adherence = totalProgrammed > 0 ? Math.round((done / totalProgrammed) * 100) : 0
 

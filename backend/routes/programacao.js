@@ -1,6 +1,8 @@
 import express from 'express'
 import { pool } from '../db/pool.js'
 import { mapProgramacao } from '../utils/mapRows.js'
+import { isValidDateString } from '../utils/dateRules.js'
+import { VALID_PLANTS } from '../utils/validators.js'
 
 const router = express.Router()
 
@@ -38,8 +40,12 @@ router.post('/generate-day', async (req, res) => {
   try {
     const { date, plant = 'Planta 01', letter = 'A', startHour = 0, endHour = 23 } = req.body
 
-    if (!date) {
-      return res.status(400).json({ error: 'Informe a data no campo date.' })
+    if (!date || !isValidDateString(date)) {
+      return res.status(400).json({ error: 'Informe uma data válida no campo date no formato AAAA-MM-DD.' })
+    }
+
+    if (!VALID_PLANTS.includes(plant)) {
+      return res.status(400).json({ error: 'Planta inválida. Use Planta 01 ou Planta 02.' })
     }
 
     const firstHour = Math.max(0, Number(startHour))

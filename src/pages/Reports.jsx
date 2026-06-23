@@ -6,7 +6,11 @@ import { exportScheduleCsv } from '../utils/exportCsv.js'
 import { formatHourRange } from '../utils/time.js'
 
 function today() {
-  return new Date().toISOString().slice(0, 10)
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function normalizeDate(value) {
@@ -48,7 +52,7 @@ export default function Reports({ schedule = [], stats = {} }) {
   const fineHttRows = filteredSchedule.filter((item) => item.fineHtt)
   const contaminatedRows = filteredSchedule.filter((item) => item.fineNpo || item.fineHtt)
   const total = stats.total ?? filteredSchedule.length
-  const done = stats.done ?? filteredSchedule.filter((item) => item.status === 'Realizada').length
+  const done = stats.done ?? filteredSchedule.filter((item) => item.status === 'coletado').length
   const adherence = stats.adherence ?? (total > 0 ? Math.round((done / total) * 100) : 0)
 
   return (

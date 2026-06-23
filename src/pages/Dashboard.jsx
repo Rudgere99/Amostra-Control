@@ -8,7 +8,10 @@ export default function Dashboard({ stats }) {
     total: stats?.total ?? 0,
     done: stats?.done ?? 0,
     pending: stats?.pending ?? 0,
+    late: stats?.late ?? 0,
+    partial: stats?.partial ?? 0,
     adherence: stats?.adherence ?? 0,
+    fine: stats?.fine ?? 0,
     notDone: stats?.notDone ?? 0
   }
 
@@ -27,6 +30,39 @@ export default function Dashboard({ stats }) {
         <StatCard label="Realizadas" value={safeStats.done} detail="salvas no backend" tone="green" icon={CheckCircle2} />
         <StatCard label="Não realizadas" value={safeStats.notDone} detail="lançadas como não realizadas" tone="red" icon={AlertTriangle} />
         <StatCard label="Aderência" value={`${safeStats.adherence}%`} detail="realizadas/programadas" tone="yellow" icon={Activity} />
+      </section>
+
+      <section className="dashboard-grid">
+        <div className="panel panel--large">
+          <div className="panel__header">
+            <div>
+              <h3>Resumo do dia</h3>
+              <span>Cálculo consolidado diretamente do banco de dados</span>
+            </div>
+          </div>
+          <div className="progress-block">
+            <div className="progress-block__top"><strong>{safeStats.adherence}%</strong><span>Aderência atual</span></div>
+            <div className="progress-bar"><div style={{ width: `${safeStats.adherence}%` }}></div></div>
+            <p>Prioridade operacional: tratar coletas pendentes e não realizadas para manter a aderência do dia.</p>
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel__header">
+            <div>
+              <h3>Status crítico</h3>
+              <span>Pendências por prioridade</span>
+            </div>
+          </div>
+          <div className="critical-list">
+            <div><span className="dot dot--orange"></span> Pendentes <strong>{safeStats.pending}</strong></div>
+            <div><span className="dot dot--green"></span> Realizadas <strong>{safeStats.done}</strong></div>
+            <div><span className="dot dot--orange"></span> Não realizadas <strong>{safeStats.notDone}</strong></div>
+            <div><span className="dot dot--red"></span> Atrasadas <strong>{safeStats.late}</strong></div>
+            <div><span className="dot dot--yellow"></span> Parciais <strong>{safeStats.partial}</strong></div>
+            <div><span className="dot dot--yellow"></span> Com fino agregado <strong>{safeStats.fine}</strong></div>
+          </div>
+        </div>
       </section>
     </div>
   )

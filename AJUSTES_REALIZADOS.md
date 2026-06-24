@@ -1,100 +1,28 @@
-const API_URL = import.meta.env.VITE_API_URL
+# Ajustes realizados no projeto Amostra-Control
 
-function ensureApiUrl() {
-  if (!API_URL) {
-    throw new Error('VITE_API_URL não configurada. Configure essa variável na Vercel com a URL da API Railway.')
-  }
-  return API_URL.replace(/\/$/, '')
-}
+## Backend
 
-async function request(path, options = {}) {
-  const baseUrl = ensureApiUrl()
-  const response = await fetch(`${baseUrl}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    },
-    ...options
-  })
+- Criada validacao centralizada de datas, horarios, status e planta.
+- Criada trava no servidor para impedir:
+  - lancamento em data futura;
+  - lancamento do dia anterior apos 01:00;
+  - lancamento de faixa horaria antes da liberacao da hora seguinte.
+- Corrigido uso de data local com timezone `America/Sao_Paulo` no backend.
+- Corrigido dashboard para calcular o total com base na tabela `programacao_amostragem`, em vez de assumir sempre 24 horas por planta.
+- Adicionada validacao de programacao diaria para data e planta.
+- Evitada duplicidade no lancamento por data, faixa e planta.
+- Criada base de tabela de auditoria `auditoria_coletas` no schema.
+- Incluidos indices adicionais para melhorar consulta por data, planta e hora.
 
-  const contentType = response.headers.get('content-type') || ''
-  const data = contentType.includes('application/json') ? await response.json() : await response.text()
+## Frontend
 
-  if (!response.ok) {
-    const message = typeof data === 'string' ? data : data.error || 'Erro na comunicação com a API.'
-    throw new Error(message)
-  }
+- Corrigido relatorio que contava realizadas usando status antigo `Realizada`; agora usa o status real `coletado`.
+- Corrigido `today()` em Relatorios e Historico para usar data local do navegador.
+- Corrigido Historico para respeitar o filtro de status.
+- Adicionado filtro de status na tela de Historico.
+- Ajustados textos do Historico para nao limitar a tela apenas a coletas realizadas.
 
-  return data
-}
+## Validacao
 
-export async function fetchCollections(filters = {}) {
-  const params = new URLSearchParams()
-  if (filters.date) params.set('date', filters.date)
-  if (filters.status) params.set('status', filters.status)
-  if (filters.plant) params.set('plant', filters.plant)
-  const query = params.toString() ? `?${params.toString()}` : ''
-  return request(`/api/coletas${query}`)
-}
-
-export async function createCollection(payload) {
-  return request('/api/coletas', {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  })
-}
-
-export async function updateCollectionApi(id, payload) {
-  return request(`/api/coletas/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload)
-  })
-}
-
-export async function fetchDashboardSummary(filters = {}) {
-  const params = new URLSearchParams()
-  if (typeof filters === 'string') {
-    params.set('date', filters)
-  } else {
-    if (filters.date) params.set('date', filters.date)
-    if (filters.plant) params.set('plant', filters.plant)
-  }
-  const query = params.toString() ? `?${params.toString()}` : ''
-  return request(`/api/dashboard/summary${query}`)
-}
-
-export async function generateDaySchedule(payload) {
-  return request('/api/programacao/generate-day', {
-    method: 'POST',
-    body: JSON.stringify({ startHour: 0, endHour: 23, ...payload })
-  })
-}
-
-export async function fetchUsers() {
-  return request('/api/usuarios')
-}
-
-export async function createUser(payload) {
-  return request('/api/usuarios', {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  })
-}
-
-export async function loginUser(payload) {
-  return request('/api/usuarios/login', {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  })
-}
-
-export async function updateUserStatus(id, active) {
-  return request(`/api/usuarios/${id}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ active })
-  })
-}
-
-export function hasApiConfigured() {
-  return Boolean(API_URL)
-}
+- Build do frontend executado com sucesso usando `npm run build`.
+- Arquivos JavaScript do backend verificados com `node --check`.

@@ -13,7 +13,8 @@ export default function Dashboard({ stats, alertVisible, setAlertVisible, onOpen
     partial: stats?.partial ?? 0,
     adherence: stats?.adherence ?? 0,
     fine: stats?.fine ?? 0,
-    notDone: stats?.notDone ?? 0
+    notDone: stats?.notDone ?? 0,
+    totalDay: stats?.totalDay ?? stats?.total ?? 0
   }
 
   return (
@@ -27,7 +28,7 @@ export default function Dashboard({ stats, alertVisible, setAlertVisible, onOpen
       <AlertBanner visible={alertVisible} onClose={() => setAlertVisible(false)} onOpenCollections={onOpenCollections} />
 
       <section className="stats-grid">
-        <StatCard label="Programadas" value={safeStats.total} detail="faixas previstas no dia" tone="blue" icon={Target} />
+        <StatCard label="Programadas" value={safeStats.total} detail={`faixas vencidas | dia: ${safeStats.totalDay}`} tone="blue" icon={Target} />
         <StatCard label="Realizadas" value={safeStats.done} detail="salvas no backend" tone="green" icon={CheckCircle2} />
         <StatCard label="Pendentes" value={safeStats.pending} detail="sem lançamento concluído" tone="orange" icon={Clock3} />
         <StatCard label="Atrasadas" value={safeStats.late} detail="horários vencidos" tone="red" icon={AlertTriangle} />
@@ -39,7 +40,7 @@ export default function Dashboard({ stats, alertVisible, setAlertVisible, onOpen
           <div className="panel__header">
             <div>
               <h3>Resumo do dia</h3>
-              <span>Cálculo consolidado diretamente do banco de dados</span>
+              <span>Cálculo do dia considera somente as faixas já vencidas/liberadas</span>
             </div>
           </div>
           <div className="progress-block">

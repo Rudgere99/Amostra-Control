@@ -9,14 +9,28 @@ export function toBoolean(value) {
   return Boolean(value)
 }
 
+function deriveStatus(status, sf1, htt1, npo1) {
+  if (status === 'pendente' || status === 'atrasado') return status
+
+  const collected = [sf1, htt1, npo1].filter(Boolean).length
+  if (collected === 3) return 'coletado'
+  if (collected === 0) return 'nao_realizado'
+  return 'parcial'
+}
+
 export function pickCollectionPayload(body = {}) {
   const date = body.date || body.data_coleta || null
   const time = normalizeTime(body.time || body.hora_programada)
   const realTime = normalizeTime(body.realTime || body.hora_real) || null
   const plant = body.plant || body.planta || null
-  const status = body.status || 'pendente'
+  const requestedStatus = body.status || 'pendente'
   const sampler = String(body.sampler || body.amostrador_nome || '').trim()
   const badge = String(body.badge || body.cadastro || '').trim()
+
+  const sf1 = toBoolean(body.sf1 || body.pilha_sf1)
+  const htt1 = toBoolean(body.htt1 || body.pilha_htt1)
+  const npo1 = toBoolean(body.npo1 || body.pilha_npo1)
+  const status = deriveStatus(requestedStatus, sf1, htt1, npo1)
 
   return {
     date,
@@ -28,9 +42,9 @@ export function pickCollectionPayload(body = {}) {
     badge,
     shift: body.shift || body.turno || null,
     letter: body.letter || body.letra || null,
-    sf1: toBoolean(body.sf1 || body.pilha_sf1),
-    htt1: toBoolean(body.htt1 || body.pilha_htt1),
-    npo1: toBoolean(body.npo1 || body.pilha_npo1),
+    sf1,
+    htt1,
+    npo1,
     fineNpo: toBoolean(body.fineNpo || body.fino_agregado_npo),
     fineHtt: toBoolean(body.fineHtt || body.fino_agregado_htt),
     fine: toBoolean(body.fine || body.contem_fino_agregado || body.fineNpo || body.fino_agregado_npo || body.fineHtt || body.fino_agregado_htt),

@@ -1,32 +1,100 @@
-# Ajustes realizados no projeto Amostra-Control
+const API_URL = import.meta.env.VITE_API_URL
 
-## Backend
+function ensureApiUrl() {
+  if (!API_URL) {
+    throw new Error('VITE_API_URL não configurada. Configure essa variável na Vercel com a URL da API Railway.')
+  }
+  return API_URL.replace(/\/$/, '')
+}
 
-- Criada validação centralizada de datas, horários, status e planta.
-- Criada trava no servidor para impedir:
-  - lançamento em data futura;
-  - lançamento do dia anterior após 01:00;
-  - lançamento de faixa horária antes da liberação da hora seguinte.
-- Corrigido uso de data local com timezone `America/Sao_Paulo` no backend.
-- Corrigido dashboard para calcular o total com base na tabela `programacao_amostragem`, em vez de assumir sempre 24 horas por planta.
-- Adicionada validação de programação diária para data e planta.
-- Evitada duplicidade no lançamento por data, faixa e planta: quando já existe lançamento para o mesmo slot, a rota de criação atualiza o registro existente.
-- Criada base de tabela de auditoria `auditoria_coletas` no schema.
-- Incluídos índices adicionais para melhorar consulta por data, planta e hora.
+async function request(path, options = {}) {
+  const baseUrl = ensureApiUrl()
+  const response = await fetch(`${baseUrl}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    },
+    ...options
+  })
 
-## Frontend
+  const contentType = response.headers.get('content-type') || ''
+  const data = contentType.includes('application/json') ? await response.json() : await response.text()
 
-- Corrigido relatório que contava realizadas usando status antigo `Realizada`; agora usa o status real `coletado`.
-- Corrigido `today()` em Relatórios e Histórico para usar data local do navegador, evitando erro de UTC.
-- Corrigido Histórico para respeitar o filtro de status.
-- Adicionado filtro de status na tela de Histórico.
-- Ajustados textos do Histórico para não limitar a tela apenas a coletas realizadas.
+  if (!response.ok) {
+    const message = typeof data === 'string' ? data : data.error || 'Erro na comunicação com a API.'
+    throw new Error(message)
+  }
 
-## Validação
+  return data
+}
 
-- Build do frontend executado com sucesso usando `npm run build`.
-- Arquivos JavaScript do backend verificados com `node --check`.
+export async function fetchCollections(filters = {}) {
+  const params = new URLSearchParams()
+  if (filters.date) params.set('date', filters.date)
+  if (filters.status) params.set('status', filters.status)
+  if (filters.plant) params.set('plant', filters.plant)
+  const query = params.toString() ? `?${params.toString()}` : ''
+  return request(`/api/coletas${query}`)
+}
 
-## Observação
+export async function createCollection(payload) {
+  return request('/api/coletas', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
 
-A autenticação com senha/PIN e token ainda não foi implementada para evitar alteração grande no fluxo de login atual. O projeto agora está mais seguro nas regras operacionais, mas a próxima evolução recomendada continua sendo autenticação real no backend.
+export async function updateCollectionApi(id, payload) {
+  return request(`/api/coletas/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function fetchDashboardSummary(filters = {}) {
+  const params = new URLSearchParams()
+  if (typeof filters === 'string') {
+    params.set('date', filters)
+  } else {
+    if (filters.date) params.set('date', filters.date)
+    if (filters.plant) params.set('plant', filters.plant)
+  }
+  const query = params.toString() ? `?${params.toString()}` : ''
+  return request(`/api/dashboard/summary${query}`)
+}
+
+export async function generateDaySchedule(payload) {
+  return request('/api/programacao/generate-day', {
+    method: 'POST',
+    body: JSON.stringify({ startHour: 0, endHour: 23, ...payload })
+  })
+}
+
+export async function fetchUsers() {
+  return request('/api/usuarios')
+}
+
+export async function createUser(payload) {
+  return request('/api/usuarios', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function loginUser(payload) {
+  return request('/api/usuarios/login', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function updateUserStatus(id, active) {
+  return request(`/api/usuarios/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ active })
+  })
+}
+
+export function hasApiConfigured() {
+  return Boolean(API_URL)
+}

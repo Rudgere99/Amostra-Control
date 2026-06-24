@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ],
+  "installCommand": "npm ci --no-audit --no-fund --prefer-offline",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
+}

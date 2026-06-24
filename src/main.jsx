@@ -86,7 +86,7 @@ function App() {
     try {
       const data = await fetchCollections(filters)
       if (Array.isArray(data)) {
-        setSchedule(data.length > 0 ? normalizeRemoteRows(data) : initialSchedule)
+        setSchedule(data.length > 0 ? normalizeRemoteRows(data) : [])
       }
       setApiStatus('Conectado ao Railway')
     } catch (error) {
@@ -114,7 +114,7 @@ function App() {
       }
 
       if (hasApiConfigured()) {
-        if (updatedRow.remote) {
+        if (updatedRow.remote && !String(updatedRow.id || '').startsWith('novo-')) {
           savedRow = await updateCollectionApi(updatedRow.id, savedRow)
         } else {
           savedRow = await createCollection(savedRow)

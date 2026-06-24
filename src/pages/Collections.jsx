@@ -163,7 +163,7 @@ function fixedDayRows(date, plant, loggedUser) {
 function mergeFixedRows(baseRows, scheduleRows) {
   return baseRows.map((base) => {
     const saved = scheduleRows.find((item) => normalizeHour(item.time) === normalizeHour(base.time))
-    return saved ? { ...base, ...saved, shift: base.shift, remote: true } : base
+    return saved ? { ...base, ...saved, shift: base.shift, remote: Boolean(saved.remote) } : base
   })
 }
 

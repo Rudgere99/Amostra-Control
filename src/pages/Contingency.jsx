@@ -30,6 +30,31 @@ function shiftByHour(time) {
   return '2º Turno'
 }
 
+function sampleValue(row, field) {
+  if (['pendente', 'atrasado'].includes(row.status || 'pendente') && row[field] !== true) return ''
+  return Boolean(row[field])
+}
+
+function deriveStatus({ sf1, htt1, npo1 }) {
+  const samples = [sf1, htt1, npo1]
+  if (samples.some((sample) => sample === '')) return 'pendente'
+
+  const collected = samples.filter(Boolean).length
+  if (collected === 3) return 'coletado'
+  if (collected === 0) return 'nao_realizado'
+  return 'parcial'
+}
+
+function sampleSelectValue(value) {
+  if (value === '') return ''
+  return value ? 'sim' : 'nao'
+}
+
+function sampleFromSelect(value) {
+  if (value === '') return ''
+  return value === 'sim'
+}
+
 function draftFromRow(row, loggedUser) {
   return {
     ...row,
@@ -40,9 +65,9 @@ function draftFromRow(row, loggedUser) {
     sampler: row.sampler || loggedUser?.name || '',
     badge: row.badge || loggedUser?.badge || '',
     letter: row.letter || loggedUser?.letter || '',
-    sf1: Boolean(row.sf1),
-    htt1: Boolean(row.htt1),
-    npo1: Boolean(row.npo1),
+    sf1: sampleValue(row, 'sf1'),
+    htt1: sampleValue(row, 'htt1'),
+    npo1: sampleValue(row, 'npo1'),
     fineNpo: Boolean(row.fineNpo),
     fineHtt: Boolean(row.fineHtt),
     ccco: Boolean(row.ccco),
@@ -120,7 +145,7 @@ export default function Contingency({ schedule = [], updateCollection, reloadCol
       const nextDraft = { ...currentDraft, [field]: value }
 
       if (['sf1', 'htt1', 'npo1'].includes(field)) {
-        nextDraft.status = nextDraft.sf1 && nextDraft.htt1 && nextDraft.npo1 ? 'coletado' : 'parcial'
+        nextDraft.status = deriveStatus(nextDraft)
       }
 
       return { ...current, [key]: nextDraft }
@@ -134,6 +159,10 @@ export default function Contingency({ schedule = [], updateCollection, reloadCol
     const payload = {
       ...row,
       ...draft,
+      sf1: draft.sf1 === true,
+      htt1: draft.htt1 === true,
+      npo1: draft.npo1 === true,
+      status: deriveStatus(draft),
       time: hour === null ? draft.time : `${String(hour).padStart(2, '0')}:00`,
       shift: shiftByHour(draft.time) || draft.shift,
       fine: Boolean(draft.fineNpo || draft.fineHtt),
@@ -254,7 +283,7 @@ export default function Contingency({ schedule = [], updateCollection, reloadCol
                     <td>{row.plant || '-'}</td>
                     <td><StatusBadge status={row.status || 'pendente'} /></td>
                     <td>
-                      <select value={draft.status} onChange={(e) => setDraftField(row, 'status', e.target.value)}>
+                      <select value={draft.status} disabled>
                         <option value="pendente">Pendente</option>
                         <option value="coletado">Realizada</option>
                         <option value="parcial">Parcial</option>
@@ -262,9 +291,9 @@ export default function Contingency({ schedule = [], updateCollection, reloadCol
                         <option value="atrasado">Atrasada</option>
                       </select>
                     </td>
-                    <td><select value={draft.sf1 ? 'sim' : 'nao'} onChange={(e) => setDraftField(row, 'sf1', e.target.value === 'sim')}><option value="sim">Sim</option><option value="nao">Não</option></select></td>
-                    <td><select value={draft.htt1 ? 'sim' : 'nao'} onChange={(e) => setDraftField(row, 'htt1', e.target.value === 'sim')}><option value="sim">Sim</option><option value="nao">Não</option></select></td>
-                    <td><select value={draft.npo1 ? 'sim' : 'nao'} onChange={(e) => setDraftField(row, 'npo1', e.target.value === 'sim')}><option value="sim">Sim</option><option value="nao">Não</option></select></td>
+                    <td><select value={sampleSelectValue(draft.sf1)} onChange={(e) => setDraftField(row, 'sf1', sampleFromSelect(e.target.value))}><option value="">Não respondido</option><option value="sim">Sim</option><option value="nao">Não</option></select></td>
+                    <td><select value={sampleSelectValue(draft.htt1)} onChange={(e) => setDraftField(row, 'htt1', sampleFromSelect(e.target.value))}><option value="">Não respondido</option><option value="sim">Sim</option><option value="nao">Não</option></select></td>
+                    <td><select value={sampleSelectValue(draft.npo1)} onChange={(e) => setDraftField(row, 'npo1', sampleFromSelect(e.target.value))}><option value="">Não respondido</option><option value="sim">Sim</option><option value="nao">Não</option></select></td>
                     <td><select value={draft.fineNpo ? 'sim' : 'nao'} onChange={(e) => setDraftField(row, 'fineNpo', e.target.value === 'sim')}><option value="nao">Não</option><option value="sim">Sim</option></select></td>
                     <td><select value={draft.fineHtt ? 'sim' : 'nao'} onChange={(e) => setDraftField(row, 'fineHtt', e.target.value === 'sim')}><option value="nao">Não</option><option value="sim">Sim</option></select></td>
                     <td><select value={draft.ccco ? 'sim' : 'nao'} onChange={(e) => setDraftField(row, 'ccco', e.target.value === 'sim')}><option value="sim">Sim</option><option value="nao">Não</option></select></td>

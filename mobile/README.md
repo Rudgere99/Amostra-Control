@@ -1,8 +1,8 @@
 # MineTrace Mobile — Expo Go
 
-Aplicativo móvel do MineTrace criado com React Native e Expo SDK 54. A versão móvel reaproveita a mesma API Node.js/Express e o mesmo PostgreSQL do sistema web.
+Aplicativo móvel do MineTrace criado com React Native e Expo SDK 54. A versão móvel reutiliza a mesma API Node.js/Express e o mesmo PostgreSQL do sistema web.
 
-## Funcionalidades implementadas no MVP
+## Funcionalidades do MVP
 
 - Login por matrícula ou nome.
 - Declaração obrigatória de ciência.
@@ -16,21 +16,21 @@ Aplicativo móvel do MineTrace criado com React Native e Expo SDK 54. A versão 
 - Bloqueios de data e horário equivalentes ao sistema web.
 - Comunicação direta com a API hospedada no Railway.
 
-## 1. Pré-requisitos no computador
+## 1. Pré-requisitos
 
-Instale:
+No computador:
 
 - Node.js LTS.
 - Git.
 - Visual Studio Code.
 
-No celular Android ou iPhone, instale o aplicativo **Expo Go** pela loja oficial.
+No celular Android ou iPhone, instale o **Expo Go** pela loja oficial.
 
 ## 2. Baixar a branch móvel
 
 ```bash
-git clone -b mobile/minetrace-app https://github.com/Rudgere99/Amostra-Control.git
-cd Amostra-Control/mobile
+git clone -b mobile/minetrace-app https://github.com/Rudgere99/Amostra-Control.git MineTraceMobile
+cd MineTraceMobile/mobile
 ```
 
 Caso o repositório já esteja baixado:
@@ -45,35 +45,53 @@ cd mobile
 
 Crie o arquivo `.env` dentro da pasta `mobile`:
 
-```bash
-copy .env.example .env
-```
-
-No PowerShell, também pode usar:
-
 ```powershell
 Copy-Item .env.example .env
+notepad .env
 ```
 
-Edite o arquivo e informe a URL pública HTTPS da API:
+O arquivo copiado vem propositalmente sem URL. Preencha com o domínio público HTTPS real do serviço Node.js no Railway:
 
 ```env
-EXPO_PUBLIC_API_URL=https://sua-api-no-railway.up.railway.app
+EXPO_PUBLIC_API_URL=https://DOMINIO-REAL-DO-BACKEND.up.railway.app
 ```
 
-Não use `localhost` para testar no celular. O celular precisa acessar uma URL pública, como a URL do Railway.
+Regras importantes:
 
-## 4. Instalar as dependências
+- Use a URL do serviço **backend Node.js** no Railway.
+- Não use a URL da Vercel.
+- Não use a URL do PostgreSQL.
+- Não use `localhost` no celular.
+- Não acrescente `/api` no final.
+- Não deixe valores de exemplo como `sua-api` ou `seu-dominio`.
+
+Antes de iniciar o Expo, teste a API no PowerShell:
+
+```powershell
+$ApiUrl = ((Get-Content .env | Where-Object { $_ -match '^EXPO_PUBLIC_API_URL=' }) -replace '^EXPO_PUBLIC_API_URL=', '').Trim()
+Invoke-RestMethod "$ApiUrl/health"
+```
+
+O retorno esperado é:
+
+```text
+status database
+------ --------
+ok     connected
+```
+
+Também teste no navegador do próprio celular:
+
+```text
+https://DOMINIO-REAL-DO-BACKEND.up.railway.app/health
+```
+
+## 4. Instalar dependências
 
 ```bash
 npm install
 npx expo install --fix
-```
-
-Verifique o projeto:
-
-```bash
-npm run doctor
+npx expo-doctor
 ```
 
 ## 5. Iniciar no Expo Go
@@ -82,13 +100,13 @@ npm run doctor
 npx expo start
 ```
 
-Um QR Code será exibido no terminal e no navegador.
+Um QR Code será exibido no terminal.
 
 ### Android
 
 1. Abra o Expo Go.
 2. Toque em **Scan QR code**.
-3. Leia o QR Code exibido pelo Expo.
+3. Leia o QR Code.
 
 ### iPhone
 
@@ -98,21 +116,27 @@ Um QR Code será exibido no terminal e no navegador.
 
 O computador e o celular devem estar na mesma rede Wi-Fi.
 
-## 6. Quando o QR Code não conectar
+## 6. Problemas de conexão
 
-Inicie em modo túnel:
+Para usar um túnel:
 
 ```bash
 npx expo start --tunnel
 ```
 
-O túnel costuma resolver bloqueios de rede corporativa, roteador ou firewall.
-
-Para limpar o cache do Expo:
+Após alterar o `.env`, pare o Expo e reinicie limpando o cache:
 
 ```bash
-npx expo start --clear
+npx expo start --tunnel --clear
 ```
+
+Se aparecer `Network request failed`, verifique nesta ordem:
+
+1. O endereço `/health` abre no navegador do celular.
+2. O `.env` contém a URL real do backend Railway.
+3. A URL começa com `https://`.
+4. A URL não termina com `/api`.
+5. O Expo foi reiniciado com `--clear`.
 
 ## 7. Teste mínimo
 
@@ -121,22 +145,12 @@ npx expo start --clear
 3. Confirme a declaração de ciência.
 4. Abra a aba **Coletas**.
 5. Selecione Planta 01 ou Planta 02.
-6. Abra uma faixa horária já liberada.
+6. Abra uma faixa horária liberada.
 7. Marque as amostras, informe status, hora real e observação.
 8. Toque em **Salvar coleta**.
 9. Confirme no sistema web se o registro apareceu no banco.
 
-## 8. Atualizações durante o desenvolvimento
-
-Depois de editar `App.js` ou arquivos da pasta `src`, salve o arquivo. O Expo Go recarrega o aplicativo automaticamente.
-
-Caso uma variável do `.env` seja alterada, faça uma recarga completa no Expo Go ou reinicie:
-
-```bash
-npx expo start --clear
-```
-
-## 9. Estrutura móvel
+## 8. Estrutura móvel
 
 ```text
 mobile/

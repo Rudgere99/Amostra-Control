@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "MineTrace",
+    "slug": "minetrace",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.trindademineracao.minetrace",
+      "adaptiveIcon": {
+        "backgroundColor": "#0b1020"
+      },
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.trindademineracao.minetrace"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
